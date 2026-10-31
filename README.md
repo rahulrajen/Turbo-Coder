@@ -1,0 +1,64 @@
+# Turbo Coder 🏁
+
+A car-themed coding adventure for beginners (age ~9): 100 levels across 10 story worlds, in blocks or real JavaScript.
+
+## Run it
+
+Node is portable in `.tools/` (no admin install). From this folder in PowerShell:
+
+```powershell
+$env:Path = "$PWD\.tools\node-v24.11.0-win-x64;$env:Path"
+npm run dev
+```
+
+Open the printed URL. `--host` is on, so a tablet or phone on the same Wi-Fi can open the `Network:` address.
+
+- `npm run verify` proves all 100 levels are solvable (as blocks and as generated code) and that the bug-fix levels start broken.
+- `npm run build` makes a static `dist/` folder.
+
+Progress (XP, coins, stars, badges, garage) and unfinished programs are saved in the browser's localStorage. Reset it under "Me".
+
+## Deploy (Vercel)
+
+It's a static Vite app, so Vercel needs no config. Import the GitHub repo in Vercel and keep the detected defaults:
+
+- Framework preset: **Vite**
+- Build command: `npm run build`
+- Output directory: `dist`
+
+Every push to the main branch redeploys. Progress is per browser and per device, because it lives in localStorage.
+
+## How it plays
+
+- **Switch any time:** every level has a Blocks / Code toggle. Blocks turn into real JavaScript ("See my blocks as real code"). The preference is saved.
+- **All levels open:** jump anywhere from the map or the 🗂️ Levels button. The glowing bubble is the suggested next stop.
+- **Stars:** 1 = finished. 2 = decent solution. 3 = at or under par AND used the idea the level teaches.
+- **Perfect Run:** win on your first try with 3 stars for bonus XP and coins plus a 👑 on the level.
+- **Hints** unlock after 5 failed tries. The 📘 Code Corner (the world's lesson card) is always available.
+
+## The 10 worlds
+
+| # | World | Teaches |
+|---|-------|---------|
+| 1 | Garage Town | commands, order |
+| 2 | Loop City | loops, nested loops |
+| 3 | Sandy Desert | if / else, while, sensors |
+| 4 | Cone Jungle | and / or / not, comparisons |
+| 5 | Number Mountain | variables, math |
+| 6 | Function Factory | functions |
+| 7 | Parameter Port | parameters |
+| 8 | List Lagoon | lists, objects, for…of |
+| 9 | Gate Galaxy | strings, say(), events |
+| 10 | Glitch's Castle | debugging, recursion |
+
+## Add or change a level
+
+Levels live in `src/game/levels.ts`. Each one is a route (`[3, 'R', 2]` = drive 3, turn right, drive 2), a story line, a hint and a reference solution written with the helpers in `src/game/dsl.ts`. Par and the generated code come from the reference solution. Run `npm run verify` after editing.
+
+## Code map
+
+- `src/game/ast.ts`: block program format, JavaScript generator, par counting
+- `src/game/interpret.ts`: runs block programs
+- `src/game/engine.ts`: the car, sensors, signs, gates
+- `src/game/textRunner.worker.ts`: runs typed code in a worker (infinite loops are stopped)
+- `src/game/progress.ts`: XP, coins, badges, shop, perfect-run rules
