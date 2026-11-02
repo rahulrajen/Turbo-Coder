@@ -39,7 +39,7 @@ export interface Cond {
 }
 
 export type Block =
-  | { id: string; type: 'forward' | 'left' | 'right' | 'honk' }
+  | { id: string; type: 'forward' | 'left' | 'right' | FunType }
   | { id: string; type: 'say'; e: Expr }
   | { id: string; type: 'repeat'; n: Expr; body: Block[] }
   | { id: string; type: 'while'; cond: Cond; body: Block[] }
@@ -51,7 +51,13 @@ export type Block =
   | { id: string; type: 'onsign'; param: string; body: Block[] };
 
 export type BlockType = Block['type'];
-export type Feature = 'repeat' | 'while' | 'if' | 'let' | 'function' | 'foreach' | 'onsign' | 'say';
+
+/** Just-for-fun blocks: they animate the car and play a sound but never move it, and never count against stars. */
+export type FunType = 'honk' | 'spin' | 'jump' | 'dance' | 'flash' | 'sing';
+export const FUN_TYPES: FunType[] = ['honk', 'spin', 'jump', 'dance', 'flash', 'sing'];
+export const isFun = (t: string): t is FunType => (FUN_TYPES as string[]).includes(t);
+export type Feature = 'repeat' | 'while' | 'if' | 'let' | 'function' | 'foreach' | 'onsign' | 'say' | 'loop';
+/** 'loop' = any loop (Repeat, While or For each). Used when an EARLIER world's loop is carried into a level, so kids may pick the loop they like. */
 
 // ---------- ids & construction ----------
 
@@ -81,6 +87,11 @@ export function makeBlock(type: BlockType, ctx: MakeCtx): Block {
     case 'left':
     case 'right':
     case 'honk':
+    case 'spin':
+    case 'jump':
+    case 'dance':
+    case 'flash':
+    case 'sing':
       return { id, type };
     case 'say':
       return { id, type, e: { a: { k: 'str', v: 'hello' } } };
@@ -217,8 +228,9 @@ export function moveBlock(blocks: Block[], id: string, dir: -1 | 1): Block[] {
   return blocks.map((b) => mapChildren(b, (l) => moveBlock(l, id, dir)));
 }
 
+/** How many blocks a program uses. Fun blocks are free, so kids can add as many as they like. */
 export function countBlocks(blocks: Block[]): number {
-  return blocks.reduce((n, b) => n + 1 + slotKeys(b).reduce((m, k) => m + countBlocks(getSlot(b, k)), 0), 0);
+  return blocks.reduce((n, b) => n + (isFun(b.type) ? 0 : 1) + slotKeys(b).reduce((m, k) => m + countBlocks(getSlot(b, k)), 0), 0);
 }
 
 export function allBlocks(blocks: Block[]): Block[] {
@@ -288,7 +300,7 @@ export function assignableVars(blocks: Block[], targetId: string | null, data: R
 const RESERVED = new Set(
   'break case catch class const continue debugger default delete do else enum export extends false finally for function if import in instanceof let new null return super switch this throw true try typeof var void while with yield await static implements interface package private protected public arguments eval undefined NaN Infinity'.split(' '),
 );
-const API_NAMES = new Set(['forward', 'left', 'right', 'honk', 'say', 'onSign', 'tick', ...SENSES]);
+const API_NAMES = new Set(['forward', 'left', 'right', 'honk', 'spin', 'jump', 'dance', 'flash', 'sing', 'say', 'onSign', 'tick', ...SENSES]);
 
 /**
  * Finds names that would work in blocks but break the real JavaScript, and explains the problem kindly.
@@ -409,6 +421,11 @@ export function toCode(blocks: Block[], indent = 0, depth = 0, counters?: string
         case 'left':
         case 'right':
         case 'honk':
+        case 'spin':
+        case 'jump':
+        case 'dance':
+        case 'flash':
+        case 'sing':
           return `${pad}${b.type}();\n`;
         case 'say':
           return `${pad}say(${exprCode(b.e)});\n`;
@@ -459,7 +476,11 @@ function bareCode(code: string): string {
  * one line, or leaving out semicolons, doesn't make it look shorter.
  */
 export function countCodeLines(code: string): number {
-  const src = bareCode(code);
+  // fun commands (spin(); honk(); …) are free, like fun blocks. But if the kid made their OWN function with
+  // one of those names, its calls do real work, so they count like any other line.
+  const bare = bareCode(code);
+  const ownFun = new Set([...bare.matchAll(/\bfunction\s+(honk|spin|jump|dance|flash|sing)\b|\b(?:const|let|var)\s+(honk|spin|jump|dance|flash|sing)\s*=/g)].map((m) => m[1] ?? m[2]));
+  const src = bare.replace(/\b(honk|spin|jump|dance|flash|sing)\s*\(\s*\)\s*;?/g, (call, name) => (ownFun.has(name) ? call : ''));
   const lines = src
     .split('\n')
     .map((l) => l.trim())
@@ -480,28 +501,109 @@ export function countCodeLines(code: string): number {
 
 // ---------- which ideas a program uses (for the concept star) ----------
 
+/**
+ * Which ideas a program REALLY uses. An empty Repeat, a box nobody reads, or a function nobody calls
+ * doesn't count, so a level's "must use" rule can't be ticked off with a do-nothing block.
+ */
 export function featuresOfBlocks(blocks: Block[]): Set<Feature> {
   const out = new Set<Feature>();
-  for (const b of allBlocks(blocks)) {
-    if (b.type === 'repeat' || b.type === 'while' || b.type === 'if' || b.type === 'foreach' || b.type === 'onsign' || b.type === 'say') out.add(b.type);
-    else if (b.type === 'let' || b.type === 'set' || b.type === 'change') out.add('let');
-    else if (b.type === 'function' || b.type === 'call') out.add('function');
+  const all = allBlocks(blocks);
+  const doesSomething = (list: Block[]) => list.length > 0;
+  // a LOOP must repeat something real: "Repeat 3 { Spin }" is fun, but it isn't using a loop to drive
+  const doesRealWork = (list: Block[]) => list.some((b) => !isFun(b.type));
+  const read = new Set<string>();
+  const tok = (t: Tok) => t.k === 'var' && read.add(t.name.split(/[.[]/)[0]);
+  const expr = (e: Expr) => (tok(e.a), e.b && tok(e.b));
+  for (const b of all) {
+    if ('e' in b) expr(b.e);
+    if (b.type === 'repeat') expr(b.n);
+    if (b.type === 'call') b.args.forEach(expr);
+    if (b.type === 'while' || b.type === 'if') b.cond.clauses.forEach((c) => (tok(c.a), c.b && tok(c.b)));
+    // changing a box also counts as using it (the typed-code check sees it the same way)
+    if (b.type === 'set' || b.type === 'change') read.add(b.name);
   }
+  const called = new Set(all.flatMap((b) => (b.type === 'call' ? [b.name] : [])));
+  for (const b of all) {
+    if ((b.type === 'repeat' || b.type === 'while' || b.type === 'foreach') && doesRealWork(b.body)) out.add(b.type);
+    else if (b.type === 'onsign' && doesSomething(b.body)) out.add('onsign');
+    else if (b.type === 'if' && (doesSomething(b.then) || doesSomething(b.els ?? []))) out.add('if');
+    else if (b.type === 'say') out.add('say');
+    else if (b.type === 'let' && read.has(b.name)) out.add('let');
+    else if (b.type === 'function' && doesSomething(b.body) && called.has(b.name)) out.add('function');
+  }
+  if (out.has('repeat') || out.has('while') || out.has('foreach')) out.add('loop');
   return out;
 }
+
+/** The code a loop repeats: what's inside its { }, or the single statement after it. */
+function loopBody(after: string): string {
+  if (!after.startsWith('{')) return after.split(/[;\n]/)[0];
+  let depth = 0;
+  for (let i = 0; i < after.length; i++) {
+    if (after[i] === '{') depth++;
+    else if (after[i] === '}' && --depth === 0) return after.slice(1, i);
+  }
+  return after.slice(1);
+}
+
+/** True when code does more than fun commands (spin(); honk(); …). */
+const realWork = (body: string) => body.replace(/\b(honk|spin|jump|dance|flash|sing)\s*\(\s*\)\s*;?/g, '').replace(/[\s;]/g, '').length > 0;
 
 export function featuresOfCode(code: string): Set<Feature> {
   const src = bareCode(code);
   const out = new Set<Feature>();
-  if (/\bfor\s*\((?![^)]*\bof\b)/.test(src)) out.add('repeat');
-  if (/\bfor\s*\([^)]*\bof\b/.test(src)) out.add('foreach');
-  if (/\bwhile\s*\(/.test(src)) out.add('while');
-  if (/\bif\s*\(/.test(src)) out.add('if');
-  // a loop's own counter (`for (let i = 0; …`) is not "making a variable"
-  if (/\b(let|const|var)\s+\w+\s*=/.test(src.replace(/\bfor\s*\(\s*(let|const|var)\b/g, 'for ('))) out.add('let');
-  // the arrow handed to onSign is an event handler, not "making a function"
-  if (/\bfunction\b|=>/.test(src.replace(/\bonSign\s*\(\s*\(?\s*\w*\s*\)?\s*=>/g, 'onSign('))) out.add('function');
+  // a loop / if counts only when something is inside it: `for (…) {}` does nothing
+  for (const kw of ['for', 'while', 'if']) {
+    for (const m of src.matchAll(new RegExp(`\\b${kw}\\s*\\(`, 'g'))) {
+      // find the bracket that closes this one (conditions have their own brackets, like atFinish())
+      let depth = 0;
+      let end = -1;
+      for (let i = m.index + m[0].length - 1; i < src.length; i++) {
+        if (src[i] === '(') depth++;
+        else if (src[i] === ')' && --depth === 0) {
+          end = i;
+          break;
+        }
+      }
+      if (end < 0) continue;
+      const after = src.slice(end + 1).trimStart();
+      if (kw === 'if') {
+        // `if (x) {} else { … }` still does something, in its else part (blocks count it too)
+        const hasBody = after.startsWith('{') ? /^\{\s*[^\s}]/.test(after) || /^\{\s*\}\s*else\s*(\{\s*[^\s}]|[A-Za-z])/.test(after) : /^[A-Za-z]/.test(after);
+        if (hasBody) out.add('if');
+        continue;
+      }
+      // a loop must repeat something real, not just fun commands (same rule as the blocks)
+      if (!realWork(loopBody(after))) continue;
+      const header = src.slice(m.index + m[0].length, end);
+      if (kw === 'for') out.add(/\bof\b/.test(header) ? 'foreach' : 'repeat');
+      else out.add('while');
+    }
+  }
+  // other honest ways to write the same ideas
+  for (const m of src.matchAll(/\bdo\s*(?=\{)/g)) {
+    if (realWork(loopBody(src.slice(m.index + m[0].length))) && /\}\s*while\s*\(/.test(src)) out.add('while');
+  }
+  for (const m of src.matchAll(/\.forEach\s*\([^{]*?=>\s*/g)) {
+    if (realWork(loopBody(src.slice(m.index + m[0].length)))) out.add('foreach');
+  }
+  // a box counts when it is made AND used again later (a loop's own counter `for (let i …` doesn't count).
+  // Handles `let n = 3;`, `let n; n = 3;` and `let a = 2, b = 3;`.
+  const noLoopVars = src.replace(/\bfor\s*\(\s*(let|const|var)\b/g, 'for (');
+  for (const decl of noLoopVars.matchAll(/\b(?:let|const|var)\s+([^;\n]*)/g)) {
+    for (const name of decl[1].matchAll(/(?:^|,)\s*([A-Za-z_]\w*)/g)) {
+      if ((src.match(new RegExp(`\\b${name[1]}\\b`, 'g')) ?? []).length >= 2) out.add('let');
+    }
+  }
+  // a function counts when it is made AND called (the arrow handed to onSign is an event, not a function)
+  for (const m of src.matchAll(/\bfunction\s+(\w+)\s*\(/g)) {
+    if ((src.match(new RegExp(`\\b${m[1]}\\s*\\(`, 'g')) ?? []).length >= 2) out.add('function');
+  }
+  for (const m of src.matchAll(/\b(?:const|let|var)\s+(\w+)\s*=\s*(?:function\b|(?:\([^)]*\)|\w+)\s*=>)/g)) {
+    if (new RegExp(`\\b${m[1]}\\s*\\(`).test(src)) out.add('function');
+  }
   if (/\bonSign\s*\(/.test(src)) out.add('onsign');
+  if (out.has('repeat') || out.has('while') || out.has('foreach')) out.add('loop');
   if (/\bsay\s*\(/.test(src)) out.add('say');
   return out;
 }

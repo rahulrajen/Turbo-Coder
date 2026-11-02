@@ -1,7 +1,8 @@
 import { useRef, useState } from 'react';
+import { META } from '../game/blockMeta';
 import {
   type Arith, type Block, type BlockType, type Clause, type Cmp, type Cond, type Expr, type MakeCtx, type SenseName, type Tok,
-  SENSES, allBlocks, assignableVars, canDrop, countBlocks, insertAt, moveTo, syncCalls, editList, functionsOf, getSlot, listNames, makeBlock, moveBlock, patchBlock, removeBlock, slotAddr, slotKeys, visibleVars,
+  SENSES, allBlocks, assignableVars, canDrop, countBlocks, insertAt, isFun, moveTo, syncCalls, editList, functionsOf, getSlot, listNames, makeBlock, moveBlock, patchBlock, removeBlock, slotAddr, slotKeys, visibleVars,
 } from '../game/ast';
 
 interface Props {
@@ -13,25 +14,12 @@ interface Props {
   onActive: (addr: string) => void;
   locked: boolean;
   onTap: () => void;
+  /** most (non-fun) blocks allowed on this level */
+  limit?: number;
+  /** extra words for the limit note, e.g. "try Easy mode" */
+  limitTip?: string;
 }
 
-const META: Record<BlockType, { icon: string; label: string; cls: string }> = {
-  forward: { icon: '⬆️', label: 'Drive', cls: 'b-move' },
-  left: { icon: '↰', label: 'Turn left', cls: 'b-turn' },
-  right: { icon: '↱', label: 'Turn right', cls: 'b-turn' },
-  honk: { icon: '📣', label: 'Honk', cls: 'b-fun' },
-  say: { icon: '💬', label: 'Say', cls: 'b-fun' },
-  repeat: { icon: '🔁', label: 'Repeat', cls: 'b-loop' },
-  while: { icon: '🔄', label: 'While', cls: 'b-loop' },
-  if: { icon: '❓', label: 'If', cls: 'b-logic' },
-  let: { icon: '📦', label: 'Make box', cls: 'b-var' },
-  set: { icon: '✏️', label: 'Set box', cls: 'b-var' },
-  change: { icon: '➕', label: 'Change box', cls: 'b-var' },
-  function: { icon: '🛠️', label: 'Function', cls: 'b-fn' },
-  call: { icon: '📞', label: 'Call', cls: 'b-fn' },
-  foreach: { icon: '📜', label: 'For each', cls: 'b-list' },
-  onsign: { icon: '🪧', label: 'When I pass a sign', cls: 'b-event' },
-};
 
 const ARITH: [Arith | '', string][] = [['', '·'], ['+', '+'], ['-', '−'], ['*', '×'], ['/', '÷'], ['%', 'mod']];
 const CMP: [Cmp | '', string][] = [['', 'is true'], ['==', '='], ['!=', '≠'], ['<', '<'], ['>', '>'], ['<=', '≤'], ['>=', '≥']];
@@ -180,7 +168,7 @@ function ParamsInput({ params, locked, onChange }: { params: string[]; locked: b
 
 // ---------- the editor ----------
 
-export function BlockEditor({ blocks, onChange, tools, data, active, onActive, locked, onTap }: Props) {
+export function BlockEditor({ blocks, onChange, tools, data, active, onActive, locked, onTap, limit = Infinity, limitTip = '' }: Props) {
   const byId = new Map(allBlocks(blocks).map((b) => [b.id, b]));
   const [activeId, activeKey] = active.split(':');
   const activeBlock = byId.get(activeId);
@@ -188,6 +176,10 @@ export function BlockEditor({ blocks, onChange, tools, data, active, onActive, l
   const act = active === '' || (activeBlock && (activeKey !== 'els' || (activeBlock.type === 'if' && activeBlock.els))) ? active : '';
   const patch = (id: string, p: Record<string, unknown>) => onChange(patchBlock(blocks, id, p));
   const hasFunction = functionsOf(blocks).length > 0;
+  const used = countBlocks(blocks);
+  // at the limit only fun blocks (which are free) can still be added
+  const full = (type: BlockType) => !isFun(type) && used >= limit;
+  const [limitNote, setLimitNote] = useState(false);
   const [confirmClear, setConfirmClear] = useState(false);
 
   const newBlock = (type: BlockType) =>
@@ -202,6 +194,10 @@ export function BlockEditor({ blocks, onChange, tools, data, active, onActive, l
     if (locked) return;
     if (draggedRef.current) {
       draggedRef.current = false; // this tap was the end of a drag, not a tap
+      return;
+    }
+    if (full(type)) {
+      setLimitNote(true);
       return;
     }
     onTap();
@@ -221,8 +217,8 @@ export function BlockEditor({ blocks, onChange, tools, data, active, onActive, l
   const [ghost, setGhost] = useState<{ x: number; y: number } | null>(null);
   const [over, setOver] = useState<{ addr: string; index: number } | null>(null);
   const draggedRef = useRef(false);
-  const live = useRef({ blocks, drag, onChange, onActive, newBlock, placed });
-  live.current = { blocks, drag, onChange, onActive, newBlock, placed };
+  const live = useRef({ blocks, drag, onChange, onActive, newBlock, placed, full });
+  live.current = { blocks, drag, onChange, onActive, newBlock, placed, full };
 
   /** Which list position is under the finger: a drop line, a "tap to add" slot, or the top/bottom half of a block. */
   const targetAt = (x: number, y: number): { addr: string; index: number } | null => {
@@ -268,6 +264,7 @@ export function BlockEditor({ blocks, onChange, tools, data, active, onActive, l
       const L = live.current;
       if (t && L.drag) {
         if (L.drag.id) L.onChange(moveTo(L.blocks, L.drag.id, t.addr, t.index));
+        else if (L.full(L.drag.type)) setLimitNote(true);
         else {
           const nb = L.newBlock(L.drag.type);
           L.onChange(insertAt(L.blocks, t.addr, t.index, nb));
@@ -551,27 +548,40 @@ export function BlockEditor({ blocks, onChange, tools, data, active, onActive, l
           ))}
         </div>
       )}
-      <div className="palette">
-        {palette.map((t) => (
-          <button
-            key={t}
-            className={`pal ${META[t].cls}`}
-            onClick={() => add(t)}
-            onPointerDown={(e) => !(t === 'call' && !hasFunction) && armDrag(e, { type: t })}
-            onContextMenu={(e) => e.preventDefault()}
-            disabled={locked || (t === 'call' && !hasFunction)}
-            title={t === 'call' && !hasFunction ? 'Make a Function first, then you can call it' : undefined}
-          >
-            <span className="pi">{META[t].icon}</span>
-            {META[t].label}
-          </button>
-        ))}
-      </div>
+      {limitNote && used >= limit && (
+        <div className="limit-note" onClick={() => setLimitNote(false)}>
+          📏 Block limit reached ({limit} blocks). Make your program shorter. Can a 🔁 Repeat or a 🛠️ Function help? (Fun blocks are always free!){limitTip}
+        </div>
+      )}
+      {[palette.filter((t) => !isFun(t)), palette.filter((t) => isFun(t))].map((group, gi) =>
+        group.length === 0 ? null : (
+          <div key={gi} className={`palette ${gi === 1 ? 'fun-palette' : ''}`}>
+            {gi === 1 && <span className="palette-label">🎉 Fun blocks (free!)</span>}
+            {group.map((t) => (
+              <button
+                key={t}
+                className={`pal ${META[t].cls}`}
+                onClick={() => add(t)}
+                onPointerDown={(e) => !(t === 'call' && !hasFunction) && armDrag(e, { type: t })}
+                onContextMenu={(e) => e.preventDefault()}
+                disabled={locked || (t === 'call' && !hasFunction)}
+                data-full={full(t) ? 'yes' : undefined}
+                title={t === 'call' && !hasFunction ? 'Make a Function first, then you can Call it' : undefined}
+              >
+                <span className="pi">{META[t].icon}</span>
+                {META[t].label}
+              </button>
+            ))}
+          </div>
+        ),
+      )}
       <div className="program">
         <div className="program-title">
           <span>🧩 My program</span>
           <span>
-            {countBlocks(blocks)} blocks
+            <span className={used >= limit ? 'at-limit' : ''}>
+              {used}{limit < Infinity ? ` / ${limit}` : ''} blocks
+            </span>
             {blocks.length > 0 && !locked && (
               <button
                 className="link"

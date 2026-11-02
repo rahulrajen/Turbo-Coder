@@ -17,6 +17,7 @@ const DY = [-1, 0, 1, 0];
 export interface Built {
   grid: string[];
   cells: [number, number][];
+  cones: [number, number][];
 }
 
 /** Turns a list of road parts into a grid. Cell 0 is the start, the last cell is the finish. */
@@ -69,5 +70,5 @@ export function buildGrid(spec: RouteSpec): Built {
   cones.forEach((c) => put(c, 'o'));
   put(cells[0], 'S');
   put(cells[last], 'F');
-  return { grid: grid.map((r) => r.join('')), cells };
+  return { grid: grid.map((r) => r.join('')), cells, cones };
 }

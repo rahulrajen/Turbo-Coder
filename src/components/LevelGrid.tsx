@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { LEVELS } from '../game/levels';
 import type { Chapter } from '../game/chapters';
 import type { Progress } from '../game/progress';
+import { TIERS } from '../game/rules';
 
 interface Props {
   chapter: Chapter;
@@ -56,6 +57,7 @@ export function ChapterBlock({ chapter, p, current, nextId, onPlay, defaultOpen 
                 <span className="n">{l.boss ? '👹' : l.id}</span>
                 <span className="st">{rec?.stars ? '★'.repeat(rec.stars) : '·'}</span>
                 {rec?.perfect && <i className="crown">👑</i>}
+                <i className={`tier-dot ${l.tier}`} title={TIERS[l.tier]} />
               </button>
             );
           })}

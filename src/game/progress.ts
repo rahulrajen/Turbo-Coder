@@ -38,6 +38,9 @@ export interface Progress {
   streak: number;
   lastPlayed: string; // yyyy-mm-dd
   sound: boolean;
+  music: boolean;
+  /** Easy mode allows more blocks on each level (see rules.ts) */
+  easyMode: boolean;
   codeMode: boolean; // prefers typing code over blocks
   codeWins: number;
   codeLevels: number[]; // different levels won by typing code
@@ -74,6 +77,8 @@ export const DEFAULT_PROGRESS: Progress = {
   streak: 0,
   lastPlayed: '',
   sound: true,
+  music: true,
+  easyMode: false,
   codeMode: false,
   codeWins: 0,
   codeLevels: [],
@@ -83,7 +88,7 @@ export const DEFAULT_PROGRESS: Progress = {
 
 // ---------- XP and driver levels ----------
 
-export const RANKS = ['Rookie', 'Learner', 'Driver', 'Racer', 'Speedster', 'Hotshot', 'Pro', 'Ace', 'Star', 'Legend', 'Hero', 'Master', 'Grandmaster', 'Champion', 'Turbo God'];
+export const RANKS = ['Beginner', 'Learner', 'Driver', 'Good Driver', 'Racer', 'Fast Racer', 'Super Racer', 'Pro Racer', 'Star Racer', 'Hero', 'Super Hero', 'Master', 'Grand Master', 'Champion', 'Turbo King'];
 
 /** XP needed to go from driver level n to n + 1: starts small and grows, so early levels come quickly. */
 const xpToNext = (n: number) => 100 + 15 * (n - 1);
@@ -145,29 +150,29 @@ const carsOwned = (p: Progress) => p.owned.filter((k) => k.startsWith('body:') &
 
 export const BADGES: Badge[] = [
   { id: 'first', icon: '🏁', title: 'First Finish', desc: 'Finish your first track', test: (p) => count(p, (r) => r.stars > 0) >= 1 },
-  { id: 'done25', icon: '🚦', title: 'Warming Up', desc: 'Finish 25 levels', test: (p) => count(p, (r) => r.stars > 0) >= 25 },
-  { id: 'done50', icon: '🛣️', title: 'Road Tripper', desc: 'Finish 50 levels', test: (p) => count(p, (r) => r.stars > 0) >= 50 },
-  { id: 'done100', icon: '💯', title: 'Century Racer', desc: 'Finish 100 levels', test: (p) => count(p, (r) => r.stars > 0) >= 100 },
-  { id: 'done200', icon: '🗺️', title: 'World Traveller', desc: 'Finish 200 levels', test: (p) => count(p, (r) => r.stars > 0) >= 200 },
+  { id: 'done25', icon: '🚦', title: 'Good Start', desc: 'Finish 25 levels', test: (p) => count(p, (r) => r.stars > 0) >= 25 },
+  { id: 'done50', icon: '🛣️', title: 'Road Trip', desc: 'Finish 50 levels', test: (p) => count(p, (r) => r.stars > 0) >= 50 },
+  { id: 'done100', icon: '💯', title: '100 Levels!', desc: 'Finish 100 levels', test: (p) => count(p, (r) => r.stars > 0) >= 100 },
+  { id: 'done200', icon: '🗺️', title: 'World Tour', desc: 'Finish 200 levels', test: (p) => count(p, (r) => r.stars > 0) >= 200 },
   { id: 'star3', icon: '⭐', title: 'Perfect Lap', desc: 'Get 3 stars on any level', test: (p) => count(p, (r) => r.stars === 3) >= 1 },
   { id: 'stars50', icon: '🌟', title: 'Star Collector', desc: 'Earn 50 stars', test: (p) => starsOf(p) >= 50 },
-  { id: 'stars200', icon: '✨', title: 'Galaxy of Stars', desc: 'Earn 200 stars', test: (p) => starsOf(p) >= 200 },
+  { id: 'stars200', icon: '✨', title: 'Sky Full of Stars', desc: 'Earn 200 stars', test: (p) => starsOf(p) >= 200 },
   { id: 'stars500', icon: '🌌', title: 'Star Legend', desc: 'Earn 500 stars', test: (p) => starsOf(p) >= 500 },
-  { id: 'perf1', icon: '🎯', title: 'First Try!', desc: 'Win a level on your first try with the fewest blocks', test: (p) => count(p, (r) => !!r.perfect) >= 1 },
-  { id: 'perf10', icon: '🏹', title: 'Sharpshooter', desc: 'Get 10 Perfect Runs', test: (p) => count(p, (r) => !!r.perfect) >= 10 },
-  { id: 'perf50', icon: '👑', title: 'Flawless King', desc: 'Get 50 Perfect Runs', test: (p) => count(p, (r) => !!r.perfect) >= 50 },
-  { id: 'perf150', icon: '💎', title: 'Diamond Driver', desc: 'Get 150 Perfect Runs', test: (p) => count(p, (r) => !!r.perfect) >= 150 },
-  { id: 'rich', icon: '🪙', title: 'Coin Hoarder', desc: 'Earn 200 coins', test: (p) => p.totalCoinsEarned >= 200 },
-  { id: 'rich1000', icon: '💰', title: 'Treasure Chest', desc: 'Earn 1,000 coins', test: (p) => p.totalCoinsEarned >= 1000 },
-  { id: 'rich3000', icon: '🏦', title: 'Coin Tycoon', desc: 'Earn 3,000 coins', test: (p) => p.totalCoinsEarned >= 3000 },
-  { id: 'cars5', icon: '🚗', title: 'Car Collector', desc: 'Own 5 cars', test: (p) => carsOwned(p) >= 5 },
+  { id: 'perf1', icon: '🎯', title: 'First Try!', desc: 'Win a level on your first GO with 3 stars', test: (p) => count(p, (r) => !!r.perfect) >= 1 },
+  { id: 'perf10', icon: '🏹', title: 'Bullseye', desc: 'Get 10 Perfect Runs', test: (p) => count(p, (r) => !!r.perfect) >= 10 },
+  { id: 'perf50', icon: '👑', title: 'Perfect King', desc: 'Get 50 Perfect Runs', test: (p) => count(p, (r) => !!r.perfect) >= 50 },
+  { id: 'perf150', icon: '💎', title: 'Diamond Racer', desc: 'Get 150 Perfect Runs', test: (p) => count(p, (r) => !!r.perfect) >= 150 },
+  { id: 'rich', icon: '🪙', title: 'Coin Collector', desc: 'Earn 200 coins', test: (p) => p.totalCoinsEarned >= 200 },
+  { id: 'rich1000', icon: '💰', title: 'Coin Box', desc: 'Earn 1,000 coins', test: (p) => p.totalCoinsEarned >= 1000 },
+  { id: 'rich3000', icon: '🏦', title: 'Coin King', desc: 'Earn 3,000 coins', test: (p) => p.totalCoinsEarned >= 3000 },
+  { id: 'cars5', icon: '🚗', title: 'Car Lover', desc: 'Own 5 cars', test: (p) => carsOwned(p) >= 5 },
   { id: 'cars16', icon: '🏎️', title: 'Full Garage', desc: 'Own every car', test: (p) => carsOwned(p) >= CARS.length },
   { id: 'coder', icon: '⌨️', title: 'Real Coder', desc: 'Win a level by typing code', test: (p) => p.codeLevels.length >= 1 },
-  { id: 'coder20', icon: '💻', title: 'Code Wizard', desc: 'Win 20 different levels by typing code', test: (p) => p.codeLevels.length >= 20 },
+  { id: 'coder20', icon: '💻', title: 'Code Star', desc: 'Win 20 different levels by typing code', test: (p) => p.codeLevels.length >= 20 },
   { id: 'coder75', icon: '🧙', title: 'Code Master', desc: 'Win 75 different levels by typing code', test: (p) => p.codeLevels.length >= 75 },
-  { id: 'streak3', icon: '🔥', title: 'On Fire', desc: 'Play 3 days in a row', test: (p) => p.streak >= 3 },
-  { id: 'streak7', icon: '🚀', title: 'Unstoppable', desc: 'Play 7 days in a row', test: (p) => p.streak >= 7 },
-  { id: 'streak14', icon: '☄️', title: 'Super Streak', desc: 'Play 14 days in a row', test: (p) => p.streak >= 14 },
+  { id: 'streak3', icon: '🔥', title: 'On Fire', desc: 'Win on 3 days in a row', test: (p) => p.streak >= 3 },
+  { id: 'streak7', icon: '🚀', title: 'Non-Stop', desc: 'Win on 7 days in a row', test: (p) => p.streak >= 7 },
+  { id: 'streak14', icon: '☄️', title: 'Super Streak', desc: 'Win on 14 days in a row', test: (p) => p.streak >= 14 },
   ...CHAPTERS.map((c) => ({
     id: `ch${c.id}`,
     icon: c.emoji,
@@ -265,8 +270,8 @@ export const SHOP: ShopItem[] = [
   item('topper', '👑', 'Crown', 150),
   item('topper', '🛸', 'UFO', 150),
 
-  item('wheels', 'black', 'Black tyres', 0),
-  item('wheels', 'white', 'White walls', 30),
+  item('wheels', 'black', 'Black wheels', 0),
+  item('wheels', 'white', 'White wheels', 30),
   item('wheels', 'neon', 'Neon green', 100),
   item('wheels', 'gold', 'Gold rims', 120),
   item('wheels', 'flame', 'Flame rims', 150),

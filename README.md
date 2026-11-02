@@ -58,6 +58,21 @@ Levels live in `src/game/levels.ts`. Each one is a route (`[3, 'R', 2]` = drive 
 - `lv(...)` are the original 100 levels, keyed by their old numbers so older saves can follow them.
 - `nl(world, after, ...)` adds a level to a world, right after original level `after` (0 = start of the world). Level numbers are assigned automatically in order.
 
+## Rules that keep levels fair
+
+In `src/game/rules.ts`:
+
+- **Must use:** each level lists the idea it teaches (`use` in `levels.ts`). Reaching the flag without really using it (an empty Repeat, a box nobody reads, a function nobody calls) doesn't finish the level.
+- **Block limit:** a limit on blocks (`blockLimit`) and typed lines (`lineLimit`), so a long chain of Drive blocks can't replace a loop. Fun blocks (Horn, Spin, Jump, Dance, Party lights, Sing) are free and never count. There are two modes, switched on any level or in My profile:
+  - **🏎️ Normal** (default): par + about half (at least 3 extra).
+  - **🐣 Easy**: double par (at least 6 extra).
+
+`npm run verify` also proves every solution uses only the blocks its level offers and fits under the limit.
+
+## Help screens
+
+`src/components/Guide.tsx` has the per-level **📖 Block Help** and the **📚 How to Play** guide on the Map. Each block's description and moving example live in `BLOCK_GUIDE`.
+
 ## Rewards
 
 All reward numbers live in `REWARDS` in `src/game/progress.ts`: first win, stars, track coins, Perfect Run, boss, daily first win (grows with the streak), finishing a world, and coins for each new badge. Driver levels need a little more XP each time (`xpToNext`).

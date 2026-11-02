@@ -109,6 +109,11 @@ export function runBlocks(level: Level, blocks: Block[]): RunResult {
           case 'left':
           case 'right':
           case 'honk':
+          case 'spin':
+          case 'jump':
+          case 'dance':
+          case 'flash':
+          case 'sing':
             api[b.type]();
             break;
           case 'say':

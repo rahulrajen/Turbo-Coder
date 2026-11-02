@@ -49,7 +49,7 @@ export function Story({ chapter, intro, onClose }: { chapter: Chapter; intro: bo
             <pre className="learn-code">{chapter.learn.code}</pre>
             <div className="modal-actions">
               <button className="btn go" onClick={onClose}>
-                {intro ? "Let's race! 🏁" : 'Got it!'}
+                {intro ? "Let's go! 🏁" : 'OK, got it!'}
               </button>
             </div>
           </>

@@ -23,7 +23,27 @@ export interface Level {
   secret?: string;
   starter?: Block[];
   boss: boolean;
+  /** 🟢 warm-up (learn), 🟡 challenge (practise), 🔴 expert (master) */
+  tier: Tier;
+  /** extra tracks the same program must also win on, so it can't just memorise one road */
+  tests: TestTrack[];
 }
+
+export type Tier = 'warmup' | 'challenge' | 'expert';
+
+/** Another version of a level's track (a different road, numbers or password) for checking a program really works. */
+export interface TestTrack {
+  grid: string[];
+  startDir: Dir;
+  data: Record<string, unknown>;
+  secret?: string;
+}
+
+/** The level as it looks on one of its tracks (0 = the main track). */
+export const onTrack = (level: Level, track: number): Level => {
+  const t = track > 0 ? level.tests[track - 1] : undefined;
+  return t ? { ...level, grid: t.grid, startDir: t.startDir, data: t.data, secret: t.secret } : level;
+};
 
 export type Outcome = 'finish' | 'crash' | 'ended' | 'limit';
 
@@ -31,7 +51,7 @@ export interface Frame {
   x: number;
   y: number;
   rot: number; // cumulative degrees so turning never spins backwards
-  event: 'start' | 'move' | 'turn' | 'crash' | 'coin' | 'finish' | 'say' | 'honk' | 'gate';
+  event: 'start' | 'move' | 'turn' | 'crash' | 'coin' | 'finish' | 'say' | 'honk' | 'gate' | 'fun';
   key?: string;
   text?: string;
 }
@@ -109,6 +129,11 @@ export function createSim(level: Level) {
     if (++looks > MAX_LOOKS) stop('limit');
   };
 
+  const fun = (kind: string) => {
+    guard();
+    frames.push({ x, y, rot, event: 'fun', text: kind });
+  };
+
   const api = {
     forward() {
       guard();
@@ -149,6 +174,12 @@ export function createSim(level: Level) {
       guard();
       frames.push({ x, y, rot, event: 'honk', text: 'BEEP!' });
     },
+    // fun moves: the car shows off but stays where it is
+    spin: () => fun('spin'),
+    jump: () => fun('jump'),
+    dance: () => fun('dance'),
+    flash: () => fun('flash'),
+    sing: () => fun('sing'),
     say(what: unknown) {
       guard();
       const text = String(what);

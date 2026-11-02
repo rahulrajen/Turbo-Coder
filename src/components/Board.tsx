@@ -30,9 +30,13 @@ interface Props {
   /** what the car is doing, for its animation */
   mood: 'idle' | 'moving' | 'win';
   honking: boolean;
+  /** a fun block playing right now (spin, jump, dance, flash, sing) */
+  fun?: string | null;
+  /** changes for every fun block, so the same animation can play twice in a row */
+  funKey?: number;
 }
 
-export function Board({ level, cosmetics, car, taken, openGates, crashed, speedMs, puffs, pops, bubble, mood, honking }: Props) {
+export function Board({ level, cosmetics, car, taken, openGates, crashed, speedMs, puffs, pops, bubble, mood, honking, fun, funKey }: Props) {
   const rows = level.grid.length;
   const cols = level.grid[0].length;
   const chapter = chapterFor(level);
@@ -51,7 +55,7 @@ export function Board({ level, cosmetics, car, taken, openGates, crashed, speedM
   return (
     <div className="board-wrap">
       <div
-        className="board"
+        className={`board ${fun === 'flash' ? 'party' : ''}`}
         data-world={chapter.world}
         style={{ gridTemplateColumns: `repeat(${cols}, 1fr)`, aspectRatio: `${cols} / ${rows}`, maxWidth: `${Math.max(maxCell * cols, 260)}px` }}
       >
@@ -85,7 +89,7 @@ export function Board({ level, cosmetics, car, taken, openGates, crashed, speedM
           </span>
         ))}
         <div
-          className={`car ${crashed ? 'crashed' : mood} ${honking ? 'honking' : ''}`}
+          className={`car ${crashed ? 'crashed' : mood} ${honking ? 'honking' : ''} ${fun ? `fun-${fun}` : ''}`}
           style={{
             width: `${100 / cols}%`,
             height: `${100 / rows}%`,
@@ -94,10 +98,13 @@ export function Board({ level, cosmetics, car, taken, openGates, crashed, speedM
             transition: `left ${speedMs}ms linear, top ${speedMs}ms linear`,
           }}
         >
-          <div className="car-inner" style={{ transform: `rotate(${car.rot}deg)`, transition: `transform ${speedMs}ms ease` }}>
+          <div key={funKey ?? 0} className="car-inner" style={{ transform: `rotate(${car.rot}deg)`, transition: `transform ${speedMs}ms ease` }}>
             <CarSvg c={cosmetics} levelId={level.id} moving={mood === 'moving' && !crashed} />
           </div>
           {crashed && <span className="boom">💥</span>}
+          {fun === 'dance' && <span className="fun-fx">💃🎶</span>}
+          {fun === 'sing' && <span className="fun-fx">🎵🎶🎵</span>}
+          {fun === 'jump' && <span className="fun-fx shadow" />}
           {mood === 'win' && <span className="win-burst">🌟</span>}
           {bubble && <span className="bubble">{bubble}</span>}
         </div>

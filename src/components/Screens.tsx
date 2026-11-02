@@ -5,8 +5,10 @@ import { BADGES, GRADIENTS, SHOP, type Progress, type ShopItem, levelFromXp, liv
 import { play } from '../game/sound';
 import { CarSvg } from './CarSvg';
 import { ChapterBlock } from './LevelGrid';
+import { AppGuide } from './Guide';
+import { MODES } from '../game/rules';
 
-export function Header({ p, onGo }: { p: Progress; onGo: (s: 'map') => void }) {
+export function Header({ p, onGo, onMusic }: { p: Progress; onGo: (s: 'map') => void; onMusic: (on: boolean) => void }) {
   const r = levelFromXp(p.xp);
   return (
     <header className="topbar">
@@ -25,9 +27,12 @@ export function Header({ p, onGo }: { p: Progress; onGo: (s: 'map') => void }) {
         <span className="pill" title="Coins">
           🪙 {p.coins}
         </span>
-        <span className="pill" title="Day streak">
+        <span className="pill" title="Days in a row you played">
           🔥 {liveStreak(p)}
         </span>
+        <button className="pill music-btn" onClick={() => onMusic(!p.music)} aria-label={p.music ? 'Turn music off' : 'Turn music on'} title={p.music ? 'Music on' : 'Music off'}>
+          {p.music ? '🎵' : '🔇'}
+        </button>
       </div>
     </header>
   );
@@ -56,8 +61,10 @@ export function MapScreen({ p, onPlay }: { p: Progress; onPlay: (id: number) => 
   const next = suggestedNext(p);
   const stars = Object.values(p.levels).reduce((n, r) => n + r.stars, 0);
   const perfects = Object.values(p.levels).filter((r) => r.perfect).length;
+  const [guide, setGuide] = useState(false);
   return (
     <div className="page">
+      {guide && <AppGuide sound={p.sound} onClose={() => setGuide(false)} />}
       <div className="hero">
         <div className="hero-car">
           <CarSvg c={p.cosmetics} levelId={next?.id} moving />
@@ -69,13 +76,18 @@ export function MapScreen({ p, onPlay }: { p: Progress; onPlay: (id: number) => 
             ⭐ {stars}/{LEVELS.length * 3} · 👑 {perfects} Perfect Runs
           </small>
         </div>
-        {next && (
-          <button className="btn go" onClick={() => onPlay(next.id)}>
-            Continue ▶
+        <div className="hero-buttons">
+          {next && (
+            <button className="btn go" onClick={() => onPlay(next.id)}>
+              Continue ▶
+            </button>
+          )}
+          <button className="btn guide-btn" onClick={() => setGuide(true)}>
+            📚 How to Play
           </button>
-        )}
+        </div>
       </div>
-      <p className="map-note">Every level is open. Jump to any track you like! The glowing one is the suggested next stop.</p>
+      <p className="map-note">All levels are open. Play any level you like! The glowing one is the level we suggest next.</p>
       {CHAPTERS.map((c) => (
         <ChapterBlock key={c.id} chapter={c} p={p} nextId={next?.id} onPlay={onPlay} defaultOpen={c.id === (next?.chapter ?? 1)} />
       ))}
@@ -160,6 +172,7 @@ export function Garage({ p, buy, equip }: { p: Progress; buy: (i: ShopItem) => v
                 if (owned) equip(it);
                 else if (afford) {
                   buy(it);
+                  play('buy', p.sound);
                   equip(it);
                   setNote(`🎉 You bought ${it.label}!`);
                 } else setNote(`🪙 You need ${it.cost - p.coins} more coins for ${it.label}. Win levels to earn more!`);
@@ -202,7 +215,7 @@ export function Badges({ p }: { p: Progress }) {
   );
 }
 
-export function Settings({ p, onName, onSound, onCodeMode, onReset }: { p: Progress; onName: (n: string) => void; onSound: (s: boolean) => void; onCodeMode: (c: boolean) => void; onReset: () => void }) {
+export function Settings({ p, onName, onSound, onMusic, onEasy, onCodeMode, onReset }: { p: Progress; onName: (n: string) => void; onSound: (s: boolean) => void; onMusic: (m: boolean) => void; onEasy: (e: boolean) => void; onCodeMode: (c: boolean) => void; onReset: () => void }) {
   const [confirm, setConfirm] = useState(false);
   return (
     <div className="page narrow">
@@ -214,6 +227,18 @@ export function Settings({ p, onName, onSound, onCodeMode, onReset }: { p: Progr
       <label className="toggle">
         <input type="checkbox" checked={p.sound} onChange={(e) => onSound(e.target.checked)} /> Sound effects
       </label>
+      <label className="toggle">
+        <input type="checkbox" checked={p.music} onChange={(e) => onMusic(e.target.checked)} /> Background music
+      </label>
+      <div className="mode-row settings-mode" role="group" aria-label="Game mode">
+        <span>Game mode:</span>
+        {(['easy', 'normal'] as const).map((m) => (
+          <button key={m} className={(m === 'easy') === p.easyMode ? 'on' : ''} onClick={() => onEasy(m === 'easy')}>
+            {MODES[m].icon} {MODES[m].name}
+          </button>
+        ))}
+        <small>{MODES[p.easyMode ? 'easy' : 'normal'].text}. Every level still needs its 🎯 must-use block.</small>
+      </div>
       <label className="toggle">
         <input type="checkbox" checked={p.codeMode} onChange={(e) => onCodeMode(e.target.checked)} /> Type real code (you can also switch on any level)
       </label>
@@ -257,9 +282,11 @@ export function Settings({ p, onName, onSound, onCodeMode, onReset }: { p: Progr
         )}
       </div>
       <section className="about">
-        <h2>💌 About Turbo Coder</h2>
+        <h2>
+          💌 About Turbo Coder <span className="ver">v1.5</span>
+        </h2>
         <p>
-          Turbo Coder was made with love by <b>Ragul</b>, so that kids everywhere can discover how much fun coding is, one race at a time.
+          Turbo Coder is made for curious young minds. Every race you finish teaches you something new about coding. Have fun learning!
         </p>
         <p>
           It's free for everyone. Play it, share it with friends and family, or{' '}

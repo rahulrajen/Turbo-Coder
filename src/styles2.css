@@ -246,10 +246,108 @@ body:has(.drag-ghost) { cursor: grabbing; user-select: none; -webkit-user-select
 
 .about { margin-top: 30px; padding: 18px; border-radius: 22px; background: linear-gradient(160deg, #ffffff14, #ffffff06); border: 1px solid var(--line); line-height: 1.55; }
 .about h2 { font-size: 1.25rem; margin-bottom: 10px; }
+.about .ver { margin-left: 6px; padding: 2px 9px; border-radius: 999px; font-size: 0.8rem; vertical-align: middle; background: #ffcf2422; border: 1px solid #ffcf2477; color: var(--yellow); }
 .about p { margin: 0 0 10px; }
 .about a { color: var(--yellow); font-weight: 800; }
 .about .fuel { padding: 10px 12px; border-radius: 14px; background: #ffcf2418; border: 1px dashed #ffcf2477; }
 .about .signoff { margin: 14px 0 0; font-weight: 800; }
+
+/* =====================================================================
+   v5: must-use, block limit, fun blocks, guides, music button
+   ===================================================================== */
+.mission { margin: 6px 0 2px; padding: 6px 10px; border-radius: 12px; background: #ffcf2422; border: 1px solid #ffcf2466; font-size: .95rem; }
+.help-btn { background: linear-gradient(#38bdf8, #2563eb); border-bottom-color: #1e3a8a; color: #fff; min-height: 38px; }
+.over-limit, .at-limit { color: #fca5a5; }
+.limit-note { margin-bottom: 10px; padding: 8px 12px; border-radius: 12px; background: #ef444428; border: 1px solid #ef444477; font-weight: 700; cursor: pointer; animation: pop .2s; }
+.pal[data-full='yes'] { opacity: .45; filter: grayscale(.7); }
+.fun-palette { margin-top: -4px; padding-top: 6px; border-top: 1px dashed #ffffff30; align-items: center; }
+.palette-label { width: 100%; font-weight: 900; font-size: .8rem; color: var(--yellow); }
+.b-fun { background: linear-gradient(#f472b6, #db2777); }
+.b-say { background: linear-gradient(#fb7185, #e11d48); }
+.music-btn { cursor: pointer; font-size: 1rem; }
+.hero-buttons { display: flex; flex-direction: column; gap: 8px; }
+.guide-btn { background: linear-gradient(#38bdf8, #2563eb); border-bottom-color: #1e3a8a; color: #fff; }
+
+/* fun block animations (individual transform properties, so the car's turn is kept) */
+.board .car.fun-spin .car-inner { animation: funspin .75s ease-in-out; }
+.board .car.fun-jump .car-inner { animation: funjump .7s ease-out; }
+.board .car.fun-dance .car-inner { animation: fundance .8s ease-in-out; }
+.board .car.fun-sing .car-inner { animation: honk .35s ease-in-out 3; }
+.board .car.fun-flash .car-inner { animation: funglow .8s steps(4); }
+.fun-fx { position: absolute; top: -40%; font-size: clamp(14px, 3.5vw, 26px); animation: riseup 1s ease-out forwards; pointer-events: none; }
+.fun-fx.shadow { top: auto; bottom: 10%; width: 50%; height: 12%; border-radius: 50%; background: #0006; animation: jumpshadow .7s ease-out; }
+.board.party::before { content: ''; position: absolute; inset: 0; z-index: 4; pointer-events: none; animation: party .8s steps(4); mix-blend-mode: screen; }
+@keyframes funspin { to { rotate: 720deg; } }
+@keyframes funjump { 0%, 100% { translate: 0 0; scale: 1; } 45% { translate: 0 -45%; scale: 1.25; } 70% { translate: 0 0; scale: 1.1 .85; } }
+@keyframes fundance { 0%, 100% { rotate: 0deg; } 20% { rotate: -25deg; translate: -8% 0; } 40% { rotate: 25deg; translate: 8% 0; } 60% { rotate: -25deg; translate: -8% 0; } 80% { rotate: 25deg; translate: 8% 0; } }
+@keyframes funglow { 0% { filter: drop-shadow(0 0 8px #f0f); } 25% { filter: drop-shadow(0 0 8px #0ff); } 50% { filter: drop-shadow(0 0 8px #ff0); } 75% { filter: drop-shadow(0 0 8px #0f0); } }
+@keyframes jumpshadow { 45% { scale: .5; opacity: .4; } }
+@keyframes party { 0% { background: #ff00ff33; } 25% { background: #00ffff33; } 50% { background: #ffff0033; } 75% { background: #00ff0033; } }
+
+/* guides */
+.modal.guide { width: min(940px, 100%); max-height: 92vh; overflow-y: auto; text-align: left; padding: 16px; }
+.modal.guide h3 { color: var(--yellow); margin: 12px 0 6px; }
+.modal.guide p, .modal.guide li { line-height: 1.5; }
+.explorer { display: grid; gap: 12px; grid-template-columns: 1fr; }
+@media (min-width: 760px) { .explorer { grid-template-columns: 220px 1fr; } }
+.explorer-list { display: flex; flex-wrap: wrap; gap: 6px; align-content: flex-start; }
+@media (min-width: 760px) { .explorer-list { flex-direction: column; flex-wrap: nowrap; max-height: 60vh; overflow-y: auto; } }
+.explorer-list .pal { min-height: 42px; font-size: .9rem; }
+.explorer-list .pal.sel { outline: 3px solid var(--yellow); outline-offset: 1px; }
+.explorer-detail { background: #0003; border-radius: 16px; padding: 12px 14px; animation: pop .2s; }
+.explorer-detail h3 { margin-top: 0 !important; display: flex; align-items: center; gap: 8px; font-size: 1.3rem; }
+.explorer-detail .what { font-size: 1.05rem; font-weight: 700; }
+.explorer-detail .how { color: var(--muted); }
+.free-tag { font-size: .7rem; padding: 2px 8px; border-radius: 99px; background: var(--green); color: #052e16; }
+.example { display: grid; gap: 12px; grid-template-columns: 1fr; margin-top: 8px; }
+@media (min-width: 560px) { .example { grid-template-columns: 1fr 1fr; } }
+.example > div > b { display: block; margin-bottom: 6px; color: var(--yellow); font-size: .85rem; }
+.demo-track .board-wrap { margin: 0; }
+.demo-track .board { max-width: 100% !important; }
+.pills { display: flex; flex-direction: column; gap: 4px; }
+.pill-block { border-radius: 10px; padding: 6px 10px; color: #fff; font-weight: 800; font-size: .9rem; text-shadow: 0 1px 0 #0005; }
+.pill-block em { font-style: normal; font-weight: 700; opacity: .9; margin-left: 4px; background: #0003; padding: 1px 6px; border-radius: 6px; }
+.pill-body { margin: 4px 0 2px 10px; padding-left: 8px; border-left: 4px solid #ffffff55; }
+.pill-body small { color: #fff; opacity: .85; font-size: .7rem; text-transform: uppercase; }
+.as-code { margin-top: 10px; }
+.as-code summary { cursor: pointer; font-weight: 800; }
+.as-code pre, .sensors code, .btn-table code { font: 700 .9rem Consolas, 'Courier New', monospace; color: #9be7ff; }
+.as-code pre { background: #0b0d20; padding: 10px; border-radius: 10px; overflow-x: auto; }
+.sensors { margin-top: 14px; }
+.sensors table, .btn-table { width: 100%; border-collapse: collapse; }
+.sensors td, .btn-table td { padding: 7px 8px; border-bottom: 1px solid var(--line); vertical-align: top; }
+.btn-table.buttons td:first-child { white-space: nowrap; }
+.btn-table td:first-child { min-width: 90px; }
+.guide-body { margin-top: 8px; }
+.guide-body ol, .guide-body ul { padding-left: 22px; }
+.worlds { list-style: none; padding-left: 0 !important; }
+
+/* difficulty tiers and test tracks */
+.tier-tag { font-style: normal; margin-left: 8px; padding: 2px 8px; border-radius: 99px; font-weight: 900; font-size: .7rem; background: #0005; }
+.tier-tag.warmup { color: #86efac; }
+.tier-tag.challenge { color: #fde047; }
+.tier-tag.expert { color: #fca5a5; }
+.tier-dot { position: absolute; bottom: -3px; right: 2px; width: 12px; height: 12px; border-radius: 50%; border: 2px solid #14173a; font-style: normal; }
+.tier-dot.warmup { background: #22c55e; }
+.tier-dot.challenge { background: #eab308; }
+.tier-dot.expert { background: #ef4444; }
+.tests-note { background: #38bdf822; border-color: #38bdf866; }
+.mission-more { display: block; font-weight: 700; opacity: .85; }
+.track-tabs { display: flex; gap: 6px; flex-wrap: wrap; margin-top: 10px; }
+.track-tabs button { flex: 1; min-width: 92px; min-height: 42px; padding: 4px 10px; border-radius: 12px; font-weight: 900; background: #ffffff14; border: 2px solid var(--line); display: flex; flex-direction: column; align-items: center; justify-content: center; line-height: 1.1; }
+.track-tabs button.on { border-color: var(--yellow); background: #ffcf2422; }
+.track-tabs button.pass { box-shadow: inset 0 -4px 0 #22c55e; }
+.track-tabs button.fail { box-shadow: inset 0 -4px 0 #ef4444; }
+.track-tabs button.optional { opacity: .6; }
+.track-tabs small { font-size: .65rem; font-weight: 700; color: var(--muted); }
+
+/* Easy / Normal mode switch */
+.mode-row { display: flex; align-items: center; flex-wrap: wrap; gap: 6px; margin-top: 10px; font-weight: 800; }
+.mode-row button { min-height: 38px; padding: 0 12px; border-radius: 99px; font-weight: 900; background: #ffffff14; border: 2px solid var(--line); }
+.mode-row button.on { background: linear-gradient(#34d27b, #16a34a); border-color: #b9ffd2; color: #fff; }
+.mode-row button:disabled { opacity: .6; }
+.mode-row small { width: 100%; font-weight: 700; }
+.settings-mode { margin: 4px 0 16px; }
 
 /* garage showroom */
 .shop-grid.cars { grid-template-columns: repeat(auto-fill, minmax(112px, 1fr)); }
