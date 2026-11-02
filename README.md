@@ -1,6 +1,6 @@
 # Turbo Coder 🏁
 
-A car-themed coding adventure for beginners (age ~9): 100 levels across 10 story worlds, in blocks or real JavaScript.
+A car-themed coding adventure for beginners (age ~9): 250 levels across 10 story worlds (30 each in worlds 1-5, 20 each in worlds 6-10), in blocks or real JavaScript.
 
 ## Run it
 
@@ -13,7 +13,7 @@ npm run dev
 
 Open the printed URL. `--host` is on, so a tablet or phone on the same Wi-Fi can open the `Network:` address.
 
-- `npm run verify` proves all 100 levels are solvable (as blocks and as generated code) and that the bug-fix levels start broken.
+- `npm run verify` proves all 250 levels are solvable (as blocks and as generated code) and that the bug-fix levels start broken.
 - `npm run build` makes a static `dist/` folder.
 
 Progress (XP, coins, stars, badges, garage) and unfinished programs are saved in the browser's localStorage. Reset it under "Me".
@@ -55,10 +55,19 @@ Every push to the main branch redeploys. Progress is per browser and per device,
 
 Levels live in `src/game/levels.ts`. Each one is a route (`[3, 'R', 2]` = drive 3, turn right, drive 2), a story line, a hint and a reference solution written with the helpers in `src/game/dsl.ts`. Par and the generated code come from the reference solution. Run `npm run verify` after editing.
 
+- `lv(...)` are the original 100 levels, keyed by their old numbers so older saves can follow them.
+- `nl(world, after, ...)` adds a level to a world, right after original level `after` (0 = start of the world). Level numbers are assigned automatically in order.
+
+## Rewards
+
+All reward numbers live in `REWARDS` in `src/game/progress.ts`: first win, stars, track coins, Perfect Run, boss, daily first win (grows with the streak), finishing a world, and coins for each new badge. Driver levels need a little more XP each time (`xpToNext`).
+
 ## Code map
 
 - `src/game/ast.ts`: block program format, JavaScript generator, par counting
 - `src/game/interpret.ts`: runs block programs
 - `src/game/engine.ts`: the car, sensors, signs, gates
 - `src/game/textRunner.worker.ts`: runs typed code in a worker (infinite loops are stopped)
-- `src/game/progress.ts`: XP, coins, badges, shop, perfect-run rules
+- `src/game/progress.ts`: XP, coins, badges, shop, perfect-run rules, moving old saves to the 250-level layout
+- `src/game/cars.ts` + `src/components/CarSvg.tsx`: the 16 cars and everything you can put on them
+- `src/game/drafts.ts`: unfinished programs and failed-try counts per level

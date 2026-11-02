@@ -1,7 +1,7 @@
 import { useMemo } from 'react';
 import type { Level } from '../game/engine';
 import type { Cosmetics } from '../game/progress';
-import { chapterOf } from '../game/chapters';
+import { chapterFor } from '../game/chapters';
 import { CarSvg } from './CarSvg';
 
 export interface Puff {
@@ -35,7 +35,7 @@ interface Props {
 export function Board({ level, cosmetics, car, taken, openGates, crashed, speedMs, puffs, pops, bubble, mood, honking }: Props) {
   const rows = level.grid.length;
   const cols = level.grid[0].length;
-  const chapter = chapterOf(level.id);
+  const chapter = chapterFor(level);
 
   const scenery = useMemo(
     () =>

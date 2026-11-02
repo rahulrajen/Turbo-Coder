@@ -1,7 +1,8 @@
 import { useState } from 'react';
 import { CHAPTERS } from '../game/chapters';
 import { LEVELS } from '../game/levels';
-import { BADGES, SHOP, type Progress, type ShopItem, levelFromXp, liveStreak } from '../game/progress';
+import { BADGES, GRADIENTS, SHOP, type Progress, type ShopItem, levelFromXp, liveStreak, suggestedNext } from '../game/progress';
+import { play } from '../game/sound';
 import { CarSvg } from './CarSvg';
 import { ChapterBlock } from './LevelGrid';
 
@@ -52,7 +53,7 @@ export function Nav({ screen, onGo }: { screen: string; onGo: (s: 'map' | 'garag
 }
 
 export function MapScreen({ p, onPlay }: { p: Progress; onPlay: (id: number) => void }) {
-  const next = LEVELS.find((l) => !(p.levels[l.id]?.stars > 0));
+  const next = suggestedNext(p);
   const stars = Object.values(p.levels).reduce((n, r) => n + r.stars, 0);
   const perfects = Object.values(p.levels).filter((r) => r.perfect).length;
   return (
@@ -63,9 +64,9 @@ export function MapScreen({ p, onPlay }: { p: Progress; onPlay: (id: number) => 
         </div>
         <div className="hero-text">
           <h1>{p.name ? `Hi ${p.name}!` : 'Hi Driver!'}</h1>
-          <p>{next ? `Next up: Level ${next.id}, ${next.title}` : 'You finished all 100 levels! Replay for more ⭐'}</p>
+          <p>{next ? `Next up: Level ${next.id}, ${next.title}` : `You finished all ${LEVELS.length} levels! Replay for more ⭐`}</p>
           <small>
-            ⭐ {stars}/300 · 👑 {perfects} Perfect Runs
+            ⭐ {stars}/{LEVELS.length * 3} · 👑 {perfects} Perfect Runs
           </small>
         </div>
         {next && (
@@ -76,14 +77,21 @@ export function MapScreen({ p, onPlay }: { p: Progress; onPlay: (id: number) => 
       </div>
       <p className="map-note">Every level is open. Jump to any track you like! The glowing one is the suggested next stop.</p>
       {CHAPTERS.map((c) => (
-        <ChapterBlock key={c.id} chapter={c} p={p} nextId={next?.id} onPlay={onPlay} />
+        <ChapterBlock key={c.id} chapter={c} p={p} nextId={next?.id} onPlay={onPlay} defaultOpen={c.id === (next?.chapter ?? 1)} />
       ))}
     </div>
   );
 }
 
+const HORN_ICON: Record<string, string> = { beep: '🔔', duck: '🦆', trumpet: '🎺', cow: '🐮', laser: '👾', train: '🚂' };
+const PREVIEW_CATS = new Set<string>(['pattern', 'stripe', 'sticker', 'topper', 'wheels', 'glow']);
+
 const swatchOf = (it: ShopItem, p: Progress) => {
-  if (it.cat === 'color') return it.value === 'auto' ? '🎨' : <i style={{ background: it.value }} />;
+  if (it.cat === 'color') {
+    if (it.value === 'auto') return '🎨';
+    const g = it.value.startsWith('grad:') ? GRADIENTS[it.value.slice(5)] : null;
+    return <i style={{ background: g ? `linear-gradient(135deg, ${g.join(', ')})` : it.value }} />;
+  }
   if (it.cat === 'body')
     return it.value === 'auto' ? (
       '🎲'
@@ -92,19 +100,29 @@ const swatchOf = (it: ShopItem, p: Progress) => {
         <CarSvg c={p.cosmetics} body={it.value} />
       </span>
     );
-  if (it.cat === 'stripe') return it.value === 'none' ? '∅' : it.value === 'racing' ? '▮▮' : '🔥';
+  // show the item on a little car, so kids see exactly what they're buying
+  if (PREVIEW_CATS.has(it.cat))
+    return (
+      <span className="mini-car">
+        <CarSvg c={{ ...p.cosmetics, [it.cat]: it.value }} body={p.cosmetics.body === 'auto' ? 'classic' : undefined} />
+      </span>
+    );
+  if (it.cat === 'horn') return HORN_ICON[it.value] ?? '📯';
   return it.value === 'none' ? '∅' : it.value;
 };
 
+const TABS: { id: string; label: string; cats: [keyof Progress['cosmetics'], string][] }[] = [
+  { id: 'cars', label: '🚘 Cars', cats: [['body', 'Pick your ride']] },
+  { id: 'paint', label: '🎨 Paint', cats: [['color', 'Paint'], ['pattern', 'Patterns']] },
+  { id: 'style', label: '✨ Style', cats: [['stripe', 'Stripes'], ['sticker', 'Stickers'], ['topper', 'On the roof']] },
+  { id: 'wheels', label: '🛞 Wheels & Glow', cats: [['wheels', 'Wheels'], ['glow', 'Underglow']] },
+  { id: 'fun', label: '💨 Trail & Horn', cats: [['trail', 'Trails'], ['horn', 'Horns (tap to hear)']] },
+];
+
 export function Garage({ p, buy, equip }: { p: Progress; buy: (i: ShopItem) => void; equip: (i: ShopItem) => void }) {
   const [note, setNote] = useState<string | null>(null);
-  const groups: [keyof Progress['cosmetics'], string][] = [
-    ['body', '🚘 Cars'],
-    ['color', '🎨 Paint'],
-    ['stripe', '🏎️ Stripes'],
-    ['sticker', '✨ Stickers'],
-    ['trail', '💨 Trails'],
-  ];
+  const [tab, setTab] = useState(TABS[0].id);
+  const groups = (TABS.find((t) => t.id === tab) ?? TABS[0]).cats;
   const auto = p.cosmetics.body === 'auto';
   return (
     <div className="page">
@@ -117,6 +135,13 @@ export function Garage({ p, buy, equip }: { p: Progress; buy: (i: ShopItem) => v
           <small>{auto ? '🎲 Track car: every level gives you its own car!' : 'This car drives on every level.'}</small>
         </div>
       </div>
+      <div className="garage-tabs" role="tablist">
+        {TABS.map((t) => (
+          <button key={t.id} role="tab" aria-selected={t.id === tab} className={t.id === tab ? 'on' : ''} onClick={() => setTab(t.id)}>
+            {t.label}
+          </button>
+        ))}
+      </div>
       {note && (
         <div className="message garage-note" onClick={() => setNote(null)}>
           {note}
@@ -125,12 +150,13 @@ export function Garage({ p, buy, equip }: { p: Progress; buy: (i: ShopItem) => v
       {groups.map(([cat, title]) => (
         <div key={cat} className="shop-group">
           <div className="section-label">{title}</div>
-          <div className={`shop-grid ${cat === 'body' ? 'cars' : ''}`}>
+          <div className={`shop-grid ${cat === 'body' || PREVIEW_CATS.has(cat) ? 'cars' : ''}`}>
             {SHOP.filter((i) => i.cat === cat).map((it) => {
               const owned = p.owned.includes(it.key);
               const equipped = p.cosmetics[cat] === it.value;
               const afford = p.coins >= it.cost;
               const pick = () => {
+                if (cat === 'horn') play('honk', true, it.value); // let them hear it first
                 if (owned) equip(it);
                 else if (afford) {
                   buy(it);
@@ -230,6 +256,34 @@ export function Settings({ p, onName, onSound, onCodeMode, onReset }: { p: Progr
           </button>
         )}
       </div>
+      <section className="about">
+        <h2>💌 About Turbo Coder</h2>
+        <p>
+          Turbo Coder was made with love by <b>Ragul</b>, so that kids everywhere can discover how much fun coding is, one race at a time.
+        </p>
+        <p>
+          It's free for everyone. Play it, share it with friends and family, or{' '}
+          <a href="https://github.com/rahulrajen/Turbo-Coder" target="_blank" rel="noreferrer">
+            copy the code
+          </a>{' '}
+          and build your own version. You're welcome to make it your own!
+        </p>
+        <p>
+          Got an idea for a new level, spotted a bug, or just want to say hi? Write to{' '}
+          <a href="mailto:rahulrajen@gmail.com?subject=Turbo%20Coder">rahulrajen@gmail.com</a>. Every message helps make the game better.
+        </p>
+        <p className="fuel">
+          ☕ If Turbo Coder put a smile on your little racer's face, a small <b>fuel top-up</b> for the developer keeps the engine running and new levels and cars
+          rolling in. Drop me a line and I'll tell you how. Even a kind note fills the tank!
+        </p>
+        <p className="signoff">
+          Enjoy the ride!
+          <br />
+          With love, Ragul 💛
+          <br />
+          <small>1 November 2026</small>
+        </p>
+      </section>
     </div>
   );
 }

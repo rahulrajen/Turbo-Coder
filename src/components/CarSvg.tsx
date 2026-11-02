@@ -1,6 +1,28 @@
 import { useId, type ReactNode } from 'react';
 import { resolveCar } from '../game/cars';
-import type { Cosmetics } from '../game/progress';
+import { type Cosmetics, GRADIENTS } from '../game/progress';
+
+const RIMS: Record<string, string> = { white: '#e5e7eb', neon: '#4ade80', gold: '#facc15', flame: '#f97316', rainbow: 'rainbow' };
+
+/** Paint patterns, drawn over the paint inside the car's own outline. */
+const PATTERNS: Record<string, { size: number; art: ReactNode }> = {
+  dots: { size: 10, art: <circle cx="5" cy="5" r="2.2" fill="#fff" opacity=".55" /> },
+  zebra: { size: 10, art: <path d="M-2 2 L12 -2 L12 2 L-2 6 Z M-2 8 L12 4 L12 8 L-2 12 Z" fill="#111" opacity=".55" /> },
+  checker: { size: 10, art: <path d="M0 0 H5 V5 H0 Z M5 5 H10 V10 H5 Z" fill="#111" opacity=".38" /> },
+  stars: { size: 14, art: <path d="M7 2 l1.4 3 3.2.4-2.4 2.2.7 3.2L7 9.2 4.1 10.8l.7-3.2L2.4 5.4l3.2-.4z" fill="#fff" opacity=".7" /> },
+  camo: {
+    size: 16,
+    art: (
+      <>
+        <ellipse cx="4" cy="4" rx="4" ry="2.6" fill="#3f6212" opacity=".55" />
+        <ellipse cx="12" cy="11" rx="4.5" ry="3" fill="#713f12" opacity=".5" />
+        <ellipse cx="13" cy="3" rx="2.5" ry="1.8" fill="#1a2e05" opacity=".5" />
+      </>
+    ),
+  },
+  hearts: { size: 12, art: <path d="M6 9.5 C2 6.5 2 3 4.2 3 5.3 3 6 4 6 4 S6.7 3 7.8 3 C10 3 10 6.5 6 9.5Z" fill="#fff" opacity=".6" /> },
+  bolts: { size: 14, art: <path d="M8 1 L3 8 H6.5 L5 13 L11 5.5 H7.5 Z" fill="#fde047" opacity=".85" /> },
+};
 
 interface Props {
   c: Cosmetics;
@@ -15,12 +37,19 @@ const GLASS = '#bfe8ff';
 
 /** Top-down car, nose pointing up, in a 64 x 96 box. Scales to its container. */
 export function CarSvg({ c, levelId, moving = false, body }: Props) {
-  const uid = useId().replace(/:/g, '');
+  const uid = useId().replace(/[:«»]/g, '');
   const car = resolveCar(body ?? c.body, c.color, levelId);
-  const paint = car.color;
+  const grad = car.color.startsWith('grad:') ? GRADIENTS[car.color.slice(5)] : undefined;
+  const paint = grad ? `url(#paint${uid})` : car.color;
   const tread = `tread${uid}`;
+  const rim = RIMS[c.wheels] ?? null;
 
-  const wheel = (x: number, y: number, w = 6, h = 14) => <rect key={`w${x}-${y}`} x={x} y={y} width={w} height={h} rx="2" fill={`url(#${tread})`} stroke="#0b0b10" strokeWidth="1" />;
+  const wheel = (x: number, y: number, w = 6, h = 14) => (
+    <g key={`w${x}-${y}`}>
+      <rect x={x} y={y} width={w} height={h} rx="2" fill={`url(#${tread})`} stroke={c.wheels === 'white' ? '#f8fafc' : '#0b0b10'} strokeWidth={c.wheels === 'white' ? 1.6 : 1} />
+      {rim && <rect x={x + w * 0.25} y={y + h * 0.3} width={w * 0.5} height={h * 0.4} rx="1" fill={rim === 'rainbow' ? `url(#rim${uid})` : rim} />}
+    </g>
+  );
   const wheels = (xs: number[], ys: number[], w?: number, h?: number) => xs.flatMap((x) => ys.map((y) => wheel(x, y, w, h)));
   const lights = (y = 8, l = 20, r = 38) => (
     <>
@@ -30,7 +59,12 @@ export function CarSvg({ c, levelId, moving = false, body }: Props) {
   );
   const windshield = (y = 30, x = 21, w = 22, h = 14) => <rect x={x} y={y} width={w} height={h} rx="4" fill={GLASS} stroke={DARK} strokeWidth="1.5" />;
   const rear = (y = 58, x = 22, w = 20, h = 8) => <rect x={x} y={y} width={w} height={h} rx="3" fill="#8fc7e8" stroke={DARK} strokeWidth="1.5" />;
-  const shape = (d: string, fill = paint) => <path d={d} fill={fill} stroke={DARK} strokeWidth="2" />;
+  const shape = (d: string, fill = paint) => (
+    <>
+      <path d={d} fill={fill} stroke={DARK} strokeWidth="2" />
+      {c.pattern !== 'none' && PATTERNS[c.pattern] && <path d={d} fill={`url(#pat${uid})`} />}
+    </>
+  );
 
   let art: ReactNode;
   let beamY = 4;
@@ -299,7 +333,42 @@ export function CarSvg({ c, levelId, moving = false, body }: Props) {
           <stop offset="0" stopColor="#fff7a8" stopOpacity=".55" />
           <stop offset="1" stopColor="#fff7a8" stopOpacity="0" />
         </linearGradient>
+        {grad && (
+          <linearGradient id={`paint${uid}`} x1="0" y1="0" x2="1" y2="1">
+            {grad.map((s, i) => (
+              <stop key={i} offset={i / (grad.length - 1)} stopColor={s} />
+            ))}
+          </linearGradient>
+        )}
+        {(c.wheels === 'rainbow' || c.glow === 'rainbow') && (
+          <linearGradient id={`rim${uid}`} x1="0" y1="0" x2="0" y2="1">
+            {GRADIENTS.rainbow.map((s, i) => (
+              <stop key={i} offset={i / (GRADIENTS.rainbow.length - 1)} stopColor={s} />
+            ))}
+          </linearGradient>
+        )}
+        {PATTERNS[c.pattern] && (
+          <pattern id={`pat${uid}`} width={PATTERNS[c.pattern].size} height={PATTERNS[c.pattern].size} patternUnits="userSpaceOnUse">
+            {PATTERNS[c.pattern].art}
+          </pattern>
+        )}
+        {c.glow !== 'none' && (
+          <filter id={`glow${uid}`} x="-50%" y="-50%" width="200%" height="200%">
+            <feGaussianBlur stdDeviation="5" />
+          </filter>
+        )}
       </defs>
+      {c.glow !== 'none' && (
+        <ellipse
+          className={`underglow ${c.glow === 'rainbow' ? 'rainbow' : ''}`}
+          cx="32"
+          cy="48"
+          rx="30"
+          ry="46"
+          fill={c.glow === 'rainbow' ? `url(#rim${uid})` : c.glow}
+          filter={`url(#glow${uid})`}
+        />
+      )}
       {moving && car.id !== 'rocket' && car.id !== 'ghost' && (
         <path className={`beam ${moving ? 'on' : ''}`} d={`M18 ${beamY} L6 ${beamY - 30} L58 ${beamY - 30} L46 ${beamY} Z`} fill={`url(#beam${uid})`} />
       )}
@@ -314,6 +383,11 @@ export function CarSvg({ c, levelId, moving = false, body }: Props) {
       {c.sticker !== 'none' && (
         <text x="32" y="80" fontSize="11" textAnchor="middle" dominantBaseline="middle">
           {c.sticker}
+        </text>
+      )}
+      {c.topper !== 'none' && (
+        <text className="topper" x="32" y="50" fontSize="17" textAnchor="middle" dominantBaseline="middle" style={{ filter: 'drop-shadow(0 2px 1px rgba(0,0,0,.5))' }}>
+          {c.topper}
         </text>
       )}
     </svg>

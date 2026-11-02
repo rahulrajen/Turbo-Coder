@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { CHAPTERS, type Chapter } from '../game/chapters';
-import type { Progress } from '../game/progress';
+import { type Progress, suggestedNext } from '../game/progress';
 import { LEVELS } from '../game/levels';
 import { ChapterBlock } from './LevelGrid';
 
@@ -61,7 +61,7 @@ export function Story({ chapter, intro, onClose }: { chapter: Chapter; intro: bo
 
 /** Jump to any level at any time. */
 export function LevelPicker({ progress, current, onPlay, onClose }: { progress: Progress; current: number; onPlay: (id: number) => void; onClose: () => void }) {
-  const nextId = LEVELS.find((l) => !(progress.levels[l.id]?.stars > 0))?.id;
+  const nextId = suggestedNext(progress)?.id;
   return (
     <div className="modal-back" onClick={onClose}>
       <div className="modal picker" role="dialog" aria-label="Choose a level" onClick={(e) => e.stopPropagation()}>
@@ -73,7 +73,7 @@ export function LevelPicker({ progress, current, onPlay, onClose }: { progress: 
         </div>
         <div className="picker-body">
           {CHAPTERS.map((c) => (
-            <ChapterBlock key={c.id} chapter={c} p={progress} current={current} nextId={nextId} onPlay={onPlay} />
+            <ChapterBlock key={c.id} chapter={c} p={progress} current={current} nextId={nextId} onPlay={onPlay} defaultOpen={c.id === LEVELS[current - 1]?.chapter} />
           ))}
         </div>
       </div>

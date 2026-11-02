@@ -57,7 +57,7 @@ export default function App() {
           >
             <div className="welcome-car">🏎️</div>
             <h2>Welcome to Turbo Coder!</h2>
-            <p className="sub">Code your car through 100 levels, win stars and unlock cool upgrades. What's your driver name?</p>
+            <p className="sub">Code your car through {LEVELS.length} levels, win stars and unlock cool upgrades. What's your driver name?</p>
             <label className="field">
               <input name="name" maxLength={16} placeholder="Type your name" autoFocus autoComplete="off" />
             </label>

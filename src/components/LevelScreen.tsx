@@ -5,7 +5,7 @@ import { type Block, type Feature, checkNames, cloneBlocks, countBlocks, countCo
 import { runBlocks } from '../game/interpret';
 import { runText } from '../game/runText';
 import { type Progress, type WinInfo, type WinSummary, starsFor } from '../game/progress';
-import { chapterOf } from '../game/chapters';
+import { chapterFor } from '../game/chapters';
 import { CARS, carById, levelCar } from '../game/cars';
 import { play } from '../game/sound';
 import { Board, type Pop, type Puff } from './Board';
@@ -27,11 +27,8 @@ interface Props {
   onCar: (body: string) => void;
 }
 
-const SPEEDS = [
-  { label: '🐢', ms: 600, name: 'Slow' },
-  { label: '🚗', ms: 380, name: 'Normal' },
-  { label: '🏎️', ms: 180, name: 'Fast' },
-];
+/** Time per car move. Long runs speed up a little so kids aren't left waiting. */
+const stepMsFor = (frames: number) => (frames > 80 ? 200 : frames > 40 ? 280 : 360);
 
 const USE_LABEL: Record<Feature, string> = {
   repeat: 'a loop',
@@ -63,10 +60,11 @@ const starterCode = (level: Level) => (level.starter ? toCode(level.starter) : '
 
 export function LevelScreen({ level, progress, hasPrev, hasNext, onExit, onGoto, onWin, onMode, onSeenChapter, onCar }: Props) {
   const text = progress.codeMode;
-  const chapter = chapterOf(level.id);
+  const chapter = chapterFor(level);
   const [draft] = useState(() => loadDraft(level.id));
   const [blocks, setBlocksRaw] = useState<Block[]>(() => draft.blocks ?? (level.starter ? cloneBlocks(level.starter) : []));
   const [undo, setUndo] = useState<Block[][]>([]);
+  const [redo, setRedo] = useState<Block[][]>([]);
   const [active, setActive] = useState('');
   const [code, setCode] = useState(() => draft.code ?? starterCode(level));
   const [codeDirty, setCodeDirty] = useState(draft.codeDirty ?? false);
@@ -82,7 +80,18 @@ export function LevelScreen({ level, progress, hasPrev, hasNext, onExit, onGoto,
   const [crashed, setCrashed] = useState(false);
   const [running, setRunning] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
-  const [speed, setSpeed] = useState(1);
+  const [stepMs, setStepMs] = useState(360);
+  // when the track scrolls out of sight (long programs), a small copy of it floats in the corner
+  const boardRef = useRef<HTMLDivElement>(null);
+  const [boardVisible, setBoardVisible] = useState(true);
+  const [miniSmall, setMiniSmall] = useState(false);
+  useEffect(() => {
+    const el = boardRef.current;
+    if (!el || typeof IntersectionObserver === 'undefined') return;
+    const io = new IntersectionObserver(([e]) => setBoardVisible(e.intersectionRatio > 0.35), { threshold: [0, 0.35, 1] });
+    io.observe(el);
+    return () => io.disconnect();
+  }, []);
   const [win, setWin] = useState<(WinSummary & { tip: string }) | null>(null);
   const [attempts, setAttempts] = useState(0);
   const [fails, setFails] = useState(draft.fails ?? 0);
@@ -106,13 +115,22 @@ export function LevelScreen({ level, progress, hasPrev, hasNext, onExit, onGoto,
   useEffect(() => saveDraft(level.id, { blocks, code, codeDirty }), [level.id, blocks, code, codeDirty]);
 
   const setBlocks = (next: Block[]) => {
-    setUndo((u) => [...u.slice(-29), blocks]);
+    setUndo((u) => [...u.slice(-49), blocks]);
+    setRedo([]); // a new change starts a new future
     setBlocksRaw(next);
   };
   const undoBlocks = () => {
     if (!undo.length || running) return;
+    setRedo((r) => [...r, blocks]);
     setBlocksRaw(undo[undo.length - 1]);
     setUndo((u) => u.slice(0, -1));
+    play('tap', sfx);
+  };
+  const redoBlocks = () => {
+    if (!redo.length || running) return;
+    setUndo((u) => [...u, blocks]);
+    setBlocksRaw(redo[redo.length - 1]);
+    setRedo((r) => r.slice(0, -1));
     play('tap', sfx);
   };
 
@@ -181,9 +199,10 @@ export function LevelScreen({ level, progress, hasPrev, hasNext, onExit, onGoto,
   };
 
   const playFrames = (res: RunResult, c: Ctx, myRun: number) => {
-    const ms = SPEEDS[speed].ms;
     // a loop that never ends would take minutes to watch; show the start, then explain
     const frames: Frame[] = res.outcome === 'limit' ? res.frames.slice(0, 24) : res.frames;
+    const ms = stepMsFor(frames.length);
+    setStepMs(ms);
     let i = 1;
     let last = frames[0];
     const addPop = (x: number, y: number, t: string) => {
@@ -229,7 +248,7 @@ export function LevelScreen({ level, progress, hasPrev, hasNext, onExit, onGoto,
         case 'honk':
           setBubble(f.text ?? '');
           if (f.event === 'honk') setHonking(true);
-          play(f.event === 'say' ? 'say' : 'honk', sfx);
+          play(f.event === 'say' ? 'say' : 'honk', sfx, progress.cosmetics.horn);
           timer.current = window.setTimeout(tick, Math.max(ms, 650));
           return;
         case 'finish':
@@ -290,11 +309,52 @@ export function LevelScreen({ level, progress, hasPrev, hasNext, onExit, onGoto,
   const best = progress.levels[level.id];
   const totalCoins = countCoins(level);
 
+  const boardView = (
+    <Board
+      level={level}
+      cosmetics={progress.cosmetics}
+      car={car}
+      taken={taken}
+      openGates={openGates}
+      crashed={crashed}
+      speedMs={stepMs - 40}
+      puffs={puffs}
+      pops={pops}
+      bubble={bubble}
+      mood={celebrate ? 'win' : running ? 'moving' : 'idle'}
+      honking={honking}
+    />
+  );
+
   return (
     <div className="level-screen" data-world={chapter.world}>
+      {!boardVisible && !win && !story && !picker && miniSmall && (
+        <button className="mini-track-pill" onClick={() => setMiniSmall(false)} aria-label="Show the small track">
+          🗺️ Track
+        </button>
+      )}
+      {!boardVisible && !win && !story && !picker && !miniSmall && (
+        <div className="mini-track" aria-label="Small view of the track">
+          <button className="mini-hide" onClick={() => setMiniSmall(true)} aria-label="Hide the small track">
+            –
+          </button>
+          <button className="mini-board" onClick={() => boardRef.current?.scrollIntoView({ behavior: 'smooth', block: 'center' })} title="Show the big track">
+            {boardView}
+          </button>
+          <div className="mini-controls">
+            <button className="btn go small" onClick={go} disabled={running}>
+              ▶ GO
+            </button>
+            <button className="btn small" onClick={reset}>
+              ↺
+            </button>
+          </div>
+          {message && <div className="mini-msg">{message}</div>}
+        </div>
+      )}
       <div className="level-top">
-        <button className="btn ghost small" onClick={onExit}>
-          ← Map
+        <button className="btn small map-btn" onClick={onExit}>
+          🏠 Map
         </button>
         <div className="level-nav">
           <button className="btn ghost small" disabled={!hasPrev} onClick={() => onGoto(level.id - 1)} aria-label="previous level">
@@ -345,20 +405,7 @@ export function LevelScreen({ level, progress, hasPrev, hasNext, onExit, onGoto,
               {fails >= HINT_AFTER && showHint && <p className="hint">{level.hint}</p>}
             </div>
           </div>
-          <Board
-            level={level}
-            cosmetics={progress.cosmetics}
-            car={car}
-            taken={taken}
-            openGates={openGates}
-            crashed={crashed}
-            speedMs={SPEEDS[speed].ms - 40}
-            puffs={puffs}
-            pops={pops}
-            bubble={bubble}
-            mood={celebrate ? 'win' : running ? 'moving' : 'idle'}
-            honking={honking}
-          />
+          <div ref={boardRef}>{boardView}</div>
           {message && <div className="message">{message}</div>}
           <div className="controls">
             <button className="btn go" onClick={go} disabled={running}>
@@ -367,15 +414,6 @@ export function LevelScreen({ level, progress, hasPrev, hasNext, onExit, onGoto,
             <button className="btn" onClick={reset}>
               ↺ Reset
             </button>
-            <div className="speed" role="group" aria-label="Driving speed">
-              <span className="speed-label">Speed</span>
-              {SPEEDS.map((s, i) => (
-                <button key={s.label} className={i === speed ? 'on' : ''} disabled={running} onClick={() => setSpeed(i)} title={s.name} aria-label={`${s.name} speed`}>
-                  {s.label}
-                  <small>{s.name}</small>
-                </button>
-              ))}
-            </div>
           </div>
           <label className="car-pick">
             <span>🚘 Car</span>
@@ -408,11 +446,14 @@ export function LevelScreen({ level, progress, hasPrev, hasNext, onExit, onGoto,
           </div>
           {!text ? (
             <>
-              {undo.length > 0 && (
-                <button className="btn ghost small undo" disabled={running} onClick={undoBlocks}>
+              <div className="undo-row">
+                <button className="btn ghost small" disabled={running || !undo.length} onClick={undoBlocks} title="Undo">
                   ↶ Undo
                 </button>
-              )}
+                <button className="btn ghost small" disabled={running || !redo.length} onClick={redoBlocks} title="Redo">
+                  ↷ Redo
+                </button>
+              </div>
               <BlockEditor blocks={blocks} onChange={setBlocks} tools={level.tools} data={level.data} active={active} onActive={setActive} locked={running} onTap={() => play('tap', sfx)} />
               {blocks.length > 0 && (
                 <div className="codepeek">

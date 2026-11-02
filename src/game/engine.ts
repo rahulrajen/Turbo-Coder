@@ -5,6 +5,10 @@ export type Dir = 0 | 1 | 2 | 3; // N E S W
 export interface Level {
   id: number;
   chapter: number;
+  /** position inside its world, 1-based */
+  index: number;
+  /** its number before worlds grew from 10 levels (for moving old saves), if it is one of the first 100 */
+  old?: number;
   title: string;
   story: string;
   hint: string;

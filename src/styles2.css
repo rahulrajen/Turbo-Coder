@@ -202,6 +202,55 @@ button, select, .slot, .bubble { touch-action: manipulation; }
 .drag-ghost.nowhere { opacity: .7; filter: grayscale(.5); }
 body:has(.drag-ghost) { cursor: grabbing; user-select: none; -webkit-user-select: none; }
 
+/* =====================================================================
+   v4: colorful Map button, mini track, undo/redo, folding worlds, garage tabs, about
+   ===================================================================== */
+.map-btn { background: linear-gradient(135deg, #ff9d00, #ff3b72); border-bottom-color: #9f1239; color: #fff; text-shadow: 0 1px 0 #0006; font-size: 1rem; box-shadow: 0 0 0 3px #ffffff30, 0 4px 14px #ff3b7266; animation: mapglow 2.6s ease-in-out infinite; }
+@keyframes mapglow { 50% { box-shadow: 0 0 0 3px #ffffff55, 0 4px 22px #ff9d00aa; } }
+
+.undo-row { display: flex; gap: 8px; margin-bottom: 8px; }
+.undo-row .btn:disabled { opacity: .4; }
+
+.mini-track { position: fixed; z-index: 30; right: 10px; bottom: calc(10px + env(safe-area-inset-bottom)); width: min(42vw, 240px); padding: 6px; border-radius: 16px; background: #14173aee; border: 2px solid var(--yellow); box-shadow: 0 10px 30px #000a; animation: pop .2s; }
+.mini-hide { position: absolute; top: -12px; left: -12px; width: 30px; height: 30px; border-radius: 50%; background: #14173a; border: 2px solid var(--yellow); color: var(--yellow); font-weight: 900; font-size: 1.1rem; line-height: 1; z-index: 1; }
+.mini-track-pill { position: fixed; z-index: 30; right: 10px; bottom: calc(10px + env(safe-area-inset-bottom)); min-height: 46px; padding: 0 16px; border-radius: 99px; background: #14173aee; border: 2px solid var(--yellow); font-weight: 900; box-shadow: 0 6px 18px #0008; animation: pop .2s; }
+/* on wide screens the track panel stays in view while the program scrolls */
+@media (min-width: 900px) {
+  .level-grid .stage { position: sticky; top: 10px; max-height: calc(100vh - 20px); overflow-y: auto; }
+}
+.mini-board { display: block; width: 100%; padding: 0; background: none; border-radius: 10px; cursor: zoom-in; }
+.mini-board .board-wrap { margin: 0; }
+.mini-board .board { max-width: 100% !important; border-width: 2px; border-radius: 10px; }
+.mini-board .tile .scenery { font-size: 40cqmin; }
+.mini-board .car .bubble { font-size: 10px; padding: 2px 5px; }
+.mini-controls { display: flex; gap: 6px; margin-top: 6px; }
+.mini-controls .btn { flex: 1; min-height: 38px; padding: 0 8px; font-size: .9rem; }
+.mini-controls .btn.go { flex: 2; }
+.mini-msg { margin-top: 6px; font-size: .72rem; font-weight: 700; line-height: 1.25; max-height: 4.2em; overflow: hidden; }
+
+.chapter-head { width: 100%; text-align: left; background: none; padding: 0; border-radius: 14px; }
+.chapter-toggle { font-size: .8rem; opacity: .8; padding: 6px; }
+.chapter:not(.open) .chapter-bar { margin-bottom: 0; }
+.chapter.open .chapter-toggle { opacity: 1; }
+
+.garage-tabs { display: flex; gap: 6px; overflow-x: auto; margin: 14px 0 4px; padding-bottom: 4px; }
+.garage-tabs button { flex: none; min-height: 44px; padding: 0 14px; border-radius: 99px; font-weight: 800; background: #ffffff14; border: 2px solid var(--line); white-space: nowrap; }
+.garage-tabs button.on { background: linear-gradient(#a855f7, #7c3aed); border-color: #c4b5fd; }
+.underglow { opacity: .85; animation: glowpulse 1.8s ease-in-out infinite; }
+.underglow.rainbow { animation: glowpulse 1.8s ease-in-out infinite, huespin 3s linear infinite; }
+@keyframes glowpulse { 50% { opacity: .5; } }
+@keyframes huespin { to { filter: hue-rotate(360deg); } }
+
+.bonus-chips { display: flex; flex-wrap: wrap; gap: 6px; justify-content: center; margin-bottom: 8px; }
+.bonus-chips span { background: #ffffff1c; border-radius: 99px; padding: 6px 12px; font-weight: 800; font-size: .9rem; }
+
+.about { margin-top: 30px; padding: 18px; border-radius: 22px; background: linear-gradient(160deg, #ffffff14, #ffffff06); border: 1px solid var(--line); line-height: 1.55; }
+.about h2 { font-size: 1.25rem; margin-bottom: 10px; }
+.about p { margin: 0 0 10px; }
+.about a { color: var(--yellow); font-weight: 800; }
+.about .fuel { padding: 10px 12px; border-radius: 14px; background: #ffcf2418; border: 1px dashed #ffcf2477; }
+.about .signoff { margin: 14px 0 0; font-weight: 800; }
+
 /* garage showroom */
 .shop-grid.cars { grid-template-columns: repeat(auto-fill, minmax(112px, 1fr)); }
 .shop-grid.cars .swatch { height: 64px; }

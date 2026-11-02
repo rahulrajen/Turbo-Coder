@@ -1,6 +1,6 @@
 import type { Level } from '../game/engine';
 import { CHAPTERS } from '../game/chapters';
-import { PERFECT_COINS, PERFECT_XP, type Progress, type WinSummary, levelFromXp } from '../game/progress';
+import { PERFECT_COINS, PERFECT_XP, REWARDS, type Progress, type WinSummary, levelFromXp } from '../game/progress';
 
 interface Props {
   summary: WinSummary & { tip: string };
@@ -53,9 +53,19 @@ export function WinModal({ summary, level, progress, hasNext, onNext, onMap, onR
             <span>🪙 coins</span>
           </div>
         </div>
+        {(summary.bossBonus || summary.dailyBonus > 0) && (
+          <div className="bonus-chips">
+            {summary.bossBonus && (
+              <span>
+                👹 Boss beaten! +{REWARDS.bossXp} XP +{REWARDS.bossCoins} 🪙
+              </span>
+            )}
+            {summary.dailyBonus > 0 && <span>🌞 First win today! +{summary.dailyBonus} 🪙</span>}
+          </div>
+        )}
         {chapter && (
           <div className="levelup chapter">
-            {chapter.emoji} {chapter.name} complete! <b>+100 XP, +30 🪙</b>
+            {chapter.emoji} {chapter.name} complete! <b>+{summary.chapterXp} XP, +{summary.chapterCoins} 🪙</b>
           </div>
         )}
         {summary.leveledUp && (
@@ -68,7 +78,7 @@ export function WinModal({ summary, level, progress, hasNext, onNext, onMap, onR
             <span>{b.icon}</span>
             <div>
               <b>New badge: {b.title}</b>
-              <small>{b.desc}</small>
+              <small>{b.desc} · +{REWARDS.badgeCoins} 🪙</small>
             </div>
           </div>
         ))}

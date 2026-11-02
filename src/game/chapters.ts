@@ -193,4 +193,5 @@ export const CHAPTERS: Chapter[] = [
   },
 ];
 
-export const chapterOf = (levelId: number) => CHAPTERS[Math.ceil(levelId / 10) - 1];
+/** The world a level belongs to. */
+export const chapterFor = (level: { chapter: number }) => CHAPTERS[level.chapter - 1];

@@ -1,3 +1,5 @@
+import { LEVELS } from './levels';
+
 export interface CarType {
   id: string;
   name: string;
@@ -42,9 +44,11 @@ const WORLD_CARS: string[][] = [
 
 /** The car a level gives you when you use the "track car". */
 export function levelCar(levelId: number): string {
-  if (levelId % 10 === 0) return 'racer';
-  const list = WORLD_CARS[Math.ceil(levelId / 10) - 1];
-  return list[(levelId - 1) % 10 % list.length];
+  const level = LEVELS[levelId - 1];
+  if (!level) return 'classic';
+  if (level.boss) return 'racer';
+  const list = WORLD_CARS[level.chapter - 1];
+  return list[(level.index - 1) % list.length];
 }
 
 /** Which body and paint to draw. 'auto' means "use the level's car" / "use the car's own color". */

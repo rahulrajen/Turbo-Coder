@@ -1,11 +1,13 @@
 let ctx: AudioContext | null = null;
 
-function tone(freq: number, start: number, dur: number, type: OscillatorType = 'square', vol = 0.08) {
+/** One note. If `to` is given the pitch slides there (quacks, moos and lasers). */
+function tone(freq: number, start: number, dur: number, type: OscillatorType = 'square', vol = 0.08, to?: number) {
   if (!ctx) return;
   const o = ctx.createOscillator();
   const g = ctx.createGain();
   o.type = type;
-  o.frequency.value = freq;
+  o.frequency.setValueAtTime(freq, ctx.currentTime + start);
+  if (to) o.frequency.exponentialRampToValueAtTime(to, ctx.currentTime + start + dur);
   g.gain.setValueAtTime(vol, ctx.currentTime + start);
   g.gain.exponentialRampToValueAtTime(0.0001, ctx.currentTime + start + dur);
   o.connect(g).connect(ctx.destination);
@@ -13,9 +15,37 @@ function tone(freq: number, start: number, dur: number, type: OscillatorType = '
   o.stop(ctx.currentTime + start + dur);
 }
 
+/** The horns you can buy in the garage. */
+function horn(kind: string) {
+  switch (kind) {
+    case 'duck':
+      tone(620, 0, 0.12, 'square', 0.09, 320);
+      tone(620, 0.16, 0.12, 'square', 0.09, 320);
+      break;
+    case 'trumpet':
+      [523, 659, 784].forEach((f, i) => tone(f, i * 0.1, i === 2 ? 0.35 : 0.12, 'sawtooth', 0.07));
+      break;
+    case 'cow':
+      tone(190, 0, 0.7, 'sawtooth', 0.1, 120);
+      break;
+    case 'laser':
+      tone(1600, 0, 0.16, 'sine', 0.1, 200);
+      tone(1600, 0.18, 0.16, 'sine', 0.1, 200);
+      break;
+    case 'train':
+      tone(440, 0, 0.22, 'triangle', 0.1);
+      tone(350, 0.25, 0.3, 'triangle', 0.1);
+      break;
+    default:
+      tone(330, 0, 0.12, 'square', 0.1);
+      tone(262, 0.1, 0.2, 'square', 0.1);
+  }
+}
+
 export type Sfx = 'tap' | 'move' | 'coin' | 'crash' | 'win' | 'honk' | 'say' | 'gate' | 'fanfare';
 
-export function play(sfx: Sfx, enabled: boolean) {
+/** Plays a sound effect. `hornKind` picks the horn for 'honk'. */
+export function play(sfx: Sfx, enabled: boolean, hornKind = 'beep') {
   if (!enabled) return;
   try {
     ctx ??= new AudioContext();
@@ -45,8 +75,7 @@ export function play(sfx: Sfx, enabled: boolean) {
       [523, 659, 784, 1047, 784, 1047, 1319].forEach((f, i) => tone(f, i * 0.11, 0.24, 'triangle', 0.13));
       break;
     case 'honk':
-      tone(330, 0, 0.12, 'square', 0.1);
-      tone(262, 0.1, 0.2, 'square', 0.1);
+      horn(hornKind);
       break;
     case 'say':
       tone(700, 0, 0.05, 'sine', 0.08);
