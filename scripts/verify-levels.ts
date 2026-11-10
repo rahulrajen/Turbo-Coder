@@ -5,6 +5,7 @@ import { type Level, createSim, dataPrelude, onTrack } from '../src/game/engine'
 import { runBlocks } from '../src/game/interpret';
 import { type Block, allBlocks, checkNames, countBlocks, countCodeLines, featuresOfBlocks, featuresOfCode, toCode } from '../src/game/ast';
 import { blockLimit, lineLimit } from '../src/game/rules';
+import { starsFor } from '../src/game/progress';
 
 /** The exact steps the solution made on the main track, as plain blocks: what a kid who "memorises the road" would build. */
 function memorised(level: Level): Block[] {
@@ -47,6 +48,15 @@ for (const level of LEVELS) {
   if (level.par.blocks > blockLimit(level)) fail(level.id, `solution has ${level.par.blocks} blocks, over the limit ${blockLimit(level)}`);
   if (blockLimit(level, true) < blockLimit(level) || lineLimit(level, true) < lineLimit(level)) fail(level.id, 'Easy mode allows fewer blocks than Normal');
   if (level.par.lines > lineLimit(level)) fail(level.id, `solution has ${level.par.lines} lines, over the limit ${lineLimit(level)}`);
+  // stars: the model answer gets 3, and every mode has room for 2 stars and for 1 star at the limit
+  for (const easy of [false, true])
+    for (const [par, max, unit] of [[level.par.blocks, blockLimit(level, easy), 'blocks'], [level.par.lines, lineLimit(level, easy), 'lines']] as const) {
+      const mode = easy ? 'Easy' : 'Normal';
+      if (starsFor(par, par, max, true) !== 3) fail(level.id, `${mode} ${unit}: the model answer does not get 3 stars`);
+      if (starsFor(par + 1, par, max, true) !== 2) fail(level.id, `${mode} ${unit}: one over par does not get 2 stars`);
+      if (starsFor(max, par, max, true) !== 1) fail(level.id, `${mode} ${unit}: the limit does not get 1 star`);
+      for (let n = 1; n < max; n++) if (starsFor(n + 1, par, max, true) > starsFor(n, par, max, true)) fail(level.id, `${mode} ${unit}: more blocks gave more stars`);
+    }
   // every "must use" idea needs its block on offer
   const NEEDS: Record<string, string[]> = { repeat: ['repeat'], while: ['while'], if: ['if'], let: ['let'], function: ['function'], foreach: ['foreach'], onsign: ['onsign'], say: ['say'], loop: ['repeat', 'while', 'foreach'] };
   for (const f of level.use) if (!NEEDS[f].some((t) => level.tools.includes(t as never))) fail(level.id, `must use "${f}" but that block isn't offered`);

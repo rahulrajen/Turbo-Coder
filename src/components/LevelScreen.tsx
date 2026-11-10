@@ -7,7 +7,7 @@ import { runText } from '../game/runText';
 import { type Progress, type WinInfo, type WinSummary, starsFor } from '../game/progress';
 import { chapterFor } from '../game/chapters';
 import { CARS, carById, levelCar } from '../game/cars';
-import { MODES, TIERS, blockLimit, lineLimit, mustUseText } from '../game/rules';
+import { MODES, TIERS, blockLimit, lineLimit, mustUseText, starBands } from '../game/rules';
 import { BlockHelp } from './Guide';
 import { type Sfx, play } from '../game/sound';
 import { Board, type Pop, type Puff } from './Board';
@@ -161,6 +161,8 @@ export function LevelScreen({ level, progress, hasPrev, hasNext, onExit, onGoto,
   interface Ctx {
     used: number;
     par: number;
+    /** the limit of the mode being played: the star bands are spread between par and this */
+    max: number;
     conceptUsed: boolean;
     attemptNo: number;
     text: boolean;
@@ -190,7 +192,7 @@ export function LevelScreen({ level, progress, hasPrev, hasNext, onExit, onGoto,
       play('almost', sfx);
       failRun(`✅ It works on this track! But it does not work on 🧪 Track ${bad + 1}. Tap Track ${bad + 1} above the road and press GO to see what happens there. Make your program work on every track!`);
     } else if (res.outcome === 'finish') {
-      const stars = starsFor(c.used, c.par, c.conceptUsed);
+      const stars = starsFor(c.used, c.par, c.max, c.conceptUsed);
       const perfect = c.attemptNo === 1 && stars === 3;
       play(perfect ? 'fanfare' : 'win', sfx);
       const summary = onWin(level.id, { stars, coins: c.results[0].coins, perfect, codeMode: c.text });
@@ -323,6 +325,7 @@ export function LevelScreen({ level, progress, hasPrev, hasNext, onExit, onGoto,
     const ctx: Ctx = {
       used,
       par: text ? level.par.lines : level.par.blocks,
+      max: maxAllowed,
       conceptUsed: needUse.every((f) => features.has(f)),
       attemptNo,
       text,
@@ -354,6 +357,7 @@ export function LevelScreen({ level, progress, hasPrev, hasNext, onExit, onGoto,
   const needUse = easy ? level.use.slice(0, 1) : level.use;
   const needTracks = easy ? Math.min(1, level.tests.length) : level.tests.length;
   const maxAllowed = text ? lineLimit(level, easy) : blockLimit(level, easy);
+  const bands = starBands(par, maxAllowed);
   const best = progress.levels[level.id];
   const totalCoins = countCoins(shown);
 
@@ -541,7 +545,7 @@ export function LevelScreen({ level, progress, hasPrev, hasNext, onExit, onGoto,
             <b className={used > maxAllowed ? 'over-limit' : ''}>
               {used} / {maxAllowed} max
             </b>{' '}
-            · ⭐⭐⭐ needs {par} or less
+            · ⭐⭐⭐ {bands.three} or less{bands.two > bands.three && <> · ⭐⭐ {bands.two} or less</>} · ⭐ {bands.two + 1 < bands.one ? `${bands.two + 1}–${bands.one}` : bands.one}
             {attempts === 0 && !best?.perfect && <div className="perfect-tip">🎯 Win on your 1st try with ⭐⭐⭐ to get a 👑 Perfect Run bonus!</div>}
             {best?.perfect && <div className="perfect-tip">👑 You got a Perfect Run here!</div>}
           </div>

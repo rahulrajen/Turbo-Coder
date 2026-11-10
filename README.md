@@ -32,7 +32,7 @@ Every push to the main branch redeploys. Progress is per browser and per device,
 
 - **Switch any time:** every level has a Blocks / Code toggle. Blocks turn into real JavaScript ("See my blocks as real code"). The preference is saved.
 - **All levels open:** jump anywhere from the map or the 🗂️ Levels button. The glowing bubble is the suggested next stop.
-- **Stars:** 1 = finished. 2 = decent solution. 3 = at or under par AND used the idea the level teaches.
+- **Stars:** 3 = at or under par (with the 🎯 must-use ideas, which every win needs). The room between par and the mode's limit is split: the top third is 1 star, the rest is 2 stars (`starBands` in `src/game/rules.ts`). Example: par 5, limit 8 → 5 ⭐⭐⭐, 6–7 ⭐⭐, 8 ⭐.
 - **Perfect Run:** win on your first try with 3 stars for bonus XP and coins plus a 👑 on the level.
 - **Hints** unlock after 5 failed tries. The 📘 Code Corner (the world's lesson card) is always available.
 
@@ -64,8 +64,8 @@ In `src/game/rules.ts`:
 
 - **Must use:** each level lists the idea it teaches (`use` in `levels.ts`). Reaching the flag without really using it (an empty Repeat, a box nobody reads, a function nobody calls) doesn't finish the level.
 - **Block limit:** a limit on blocks (`blockLimit`) and typed lines (`lineLimit`), so a long chain of Drive blocks can't replace a loop. Fun blocks (Horn, Spin, Jump, Dance, Party lights, Sing) are free and never count. There are two modes, switched on any level or in My profile:
-  - **🏎️ Normal** (default): par + about half (at least 3 extra).
-  - **🐣 Easy**: double par (at least 6 extra).
+  - **🏎️ Normal** (default): par + 20% (at least 3 extra blocks, or 4 extra lines).
+  - **🐣 Easy**: double the Normal extra (at least 6 extra blocks, or 8 extra lines).
 
 `npm run verify` also proves every solution uses only the blocks its level offers and fits under the limit.
 

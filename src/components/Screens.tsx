@@ -283,7 +283,7 @@ export function Settings({ p, onName, onSound, onMusic, onEasy, onCodeMode, onRe
       </div>
       <section className="about">
         <h2>
-          💌 About Turbo Coder <span className="ver">v1.5</span>
+          💌 About Turbo Coder <span className="ver">v1.6</span>
         </h2>
         <p>
           Turbo Coder is made for curious young minds. Every race you finish teaches you something new about coding. Have fun learning!

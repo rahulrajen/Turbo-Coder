@@ -484,10 +484,14 @@ export function AppGuide({ onClose, sound }: { onClose: () => void; sound: boole
             <>
               <h3>⭐ How many stars?</h3>
               <ul>
-                <li>⭐ You reached the flag.</li>
-                <li>⭐⭐ Your program is not too long.</li>
-                <li>⭐⭐⭐ Your program is as short as Coach's best (the number shown under the track) or shorter.</li>
+                <li>⭐⭐⭐ Your program is as short as Coach's best answer, or shorter.</li>
+                <li>⭐⭐ Your program is a little longer than Coach's best.</li>
+                <li>⭐ Your program is close to the block limit.</li>
               </ul>
+              <p>
+                The numbers are shown under the track. Example: Coach's best is 5 and the limit is 8. Then 5 or less gets ⭐⭐⭐, 6 or 7 gets ⭐⭐, and 8 gets ⭐.
+                More than 8 is not allowed.
+              </p>
               <h3>🎯 Must use</h3>
               <p>
                 Many levels teach one idea, like 🔁 Repeat. The 🎯 line tells you which block you MUST use. If you reach the flag without it, the level is not
@@ -510,18 +514,19 @@ export function AppGuide({ onClose, sound }: { onClose: () => void; sound: boole
                     <td>
                       <b>🐣 Easy</b>
                     </td>
-                    <td>More room to try things: double Coach's best answer, or 6 extra blocks, whichever is more. Example: best answer 4 → up to 10 blocks.</td>
+                    <td>More room to try things: double the extra blocks of Normal mode (at least 6 extra). Example: best answer 4 → up to 10 blocks, best answer 20 → up to 28.</td>
                   </tr>
                   <tr>
                     <td>
                       <b>🏎️ Normal</b>
                     </td>
-                    <td>Less room, more thinking: Coach's best answer plus about half (at least 3 extra). Example: best answer 4 → up to 7 blocks.</td>
+                    <td>Less room, more thinking: Coach's best answer plus a little more (at least 3 extra, or 20% on big tracks). Example: best answer 4 → up to 7 blocks, best answer 20 → up to 24.</td>
                   </tr>
                 </tbody>
               </table>
               <p>
-                Stars work the same way in both modes. ⭐⭐⭐ always needs Coach's best answer or shorter, so try to make your program short!
+                ⭐⭐⭐ always needs Coach's best answer or shorter, in both modes. Easy mode has more room, so ⭐⭐ and ⭐ stretch a little further. Try to make
+                your program short!
               </p>
               <table className="btn-table">
                 <tbody>

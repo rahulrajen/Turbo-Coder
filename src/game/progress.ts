@@ -3,6 +3,7 @@ import { LEVELS, OLD_TO_NEW } from './levels';
 import { CHAPTERS } from './chapters';
 import { CARS } from './cars';
 import { clearAllDrafts, moveDrafts } from './drafts';
+import { starBands } from './rules';
 
 export interface Cosmetics {
   color: string; // a hex color, 'auto' (the car's own paint) or 'grad:<name>' (special paint)
@@ -103,10 +104,11 @@ export function levelFromXp(xp: number) {
   return { level, rank: RANKS[Math.min(Math.floor((level - 1) / 4), RANKS.length - 1)], into: left, next: xpToNext(level) };
 }
 
-/** Stars: 1 for finishing, 2 for a decent solution, 3 for par or better AND using the new idea. */
-export function starsFor(used: number, par: number, conceptUsed: boolean) {
-  if (used <= par && conceptUsed) return 3;
-  if (used <= Math.ceil(par * 1.5) + 1) return 2;
+/** Stars: 3 for par or better AND using the new idea, then 2 or 1 depending on how close to the limit (see starBands). */
+export function starsFor(used: number, par: number, max: number, conceptUsed: boolean) {
+  const bands = starBands(par, max);
+  if (used <= bands.three && conceptUsed) return 3;
+  if (used <= bands.two) return 2;
   return 1;
 }
 
